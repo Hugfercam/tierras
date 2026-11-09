@@ -1,0 +1,18 @@
+services:
+  tierras:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: '3001'
+      HOST: 0.0.0.0
+      DB_PATH: /app/data/tierras.db
+      SEED_DEMO: 'false'
+      # Activar cuando haya un proxy con HTTPS delante.
+      COOKIE_SECURE: 'false'
+    volumes:
+      - tierras-data:/app/data
+
+volumes:
+  tierras-data:

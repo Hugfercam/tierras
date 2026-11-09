@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.npm-cache/
+.env
+.env.local
+
+# Datos locales y sesiones de prueba
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Herramientas de verificación visual
+.chrome-profile/
+.chrome-cdp/
+.chrome-pid
+capture-*.png
+screenshot-*.png
+tmp-*
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log

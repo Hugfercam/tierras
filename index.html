@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#071a21" />
+    <meta
+      name="description"
+      content="Tierras es el mapa de viajes privado de tu grupo. Marcá países, mirá el globo en 3D y comparen sus recorridos."
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tierras" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Tierras · Mapa de viajes compartido</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #071a21;
+        color: #f2ecdc;
+      }
+      #boot {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        letter-spacing: 0.04em;
+        color: #9fb8b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot">Abriendo el atlas…</div>
+    </div>
+    <noscript>Necesitás activar JavaScript para usar Tierras.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
