@@ -6,8 +6,10 @@ import { Button } from '../ui/Button';
 import { CountryFlag } from '../ui/CountryFlag';
 import { Icon } from '../ui/Icons';
 import { Modal } from '../ui/Modal';
+import { VisitCities } from './VisitCities';
 
 interface CountryDialogProps {
+  groupId: string;
   countryCode: string;
   spotlight: PlaceResult | null;
   visits: Visit[];
@@ -21,6 +23,7 @@ interface CountryDialogProps {
 }
 
 export function CountryDialog({
+  groupId,
   countryCode,
   spotlight,
   visits,
@@ -137,10 +140,14 @@ export function CountryDialog({
                       {entry.member.name}
                       {visit.userId === currentUserId ? <span className="you-tag">Vos</span> : null}
                     </strong>
-                    <span>
-                      {visit.cityName ? `${visit.cityName} · ` : ''}
-                      {formatDate(visit.visitedAt)}
-                    </span>
+                    <span className="visitor-row__date">{formatDate(visit.visitedAt)}</span>
+                    <VisitCities
+                      groupId={groupId}
+                      visit={visit}
+                      countryCode={countryCode}
+                      editable={visit.userId === currentUserId}
+                      online={online}
+                    />
                   </div>
                   <span
                     className="visitor-row__flag"

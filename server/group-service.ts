@@ -12,6 +12,7 @@ import type {
   GroupRole,
   GroupSummary,
   Visit,
+  VisitCity,
 } from '../shared/types.ts';
 import type { Database } from './db.ts';
 import { HttpError } from './errors.ts';
@@ -42,6 +43,14 @@ interface VisitRow {
   lng: number;
   visited_at: string;
   created_at: string;
+}
+
+interface VisitCityRow {
+  id: string;
+  visit_id: string;
+  city_name: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 interface GroupListRow extends GroupRow {
@@ -211,6 +220,28 @@ export function getGroupOverview(
     )
     .all(groupId) as unknown as VisitRow[];
 
+  const cityRows = db
+    .prepare(
+      `SELECT c.id, c.visit_id, c.city_name, c.lat, c.lng
+       FROM visit_cities c
+       JOIN visits v ON v.id = c.visit_id
+       WHERE v.group_id = ?
+       ORDER BY c.city_name COLLATE NOCASE ASC, c.created_at ASC`,
+    )
+    .all(groupId) as unknown as VisitCityRow[];
+
+  const citiesByVisit = new Map<string, VisitCity[]>();
+  for (const city of cityRows) {
+    const bucket = citiesByVisit.get(city.visit_id) || [];
+    bucket.push({
+      id: city.id,
+      name: city.city_name,
+      lat: city.lat,
+      lng: city.lng,
+    });
+    citiesByVisit.set(city.visit_id, bucket);
+  }
+
   const visitsByUser = new Map<string, VisitRow[]>();
   for (const visit of visitRows) {
     const bucket = visitsByUser.get(visit.user_id) || [];
@@ -251,6 +282,7 @@ export function getGroupOverview(
     lng: visit.lng,
     visitedAt: visit.visited_at,
     createdAt: visit.created_at,
+    cities: citiesByVisit.get(visit.id) ?? [],
   }));
 
   const uniqueCountries = new Set(visits.map((visit) => visit.countryCode));
@@ -289,6 +321,22 @@ export interface CreateVisitInput {
   visitedAt: string;
 }
 
+function insertVisitCity(
+  db: Database,
+  visitId: string,
+  name: string,
+  lat: number | null,
+  lng: number | null,
+  createdAt: string,
+): VisitCity {
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO visit_cities (id, visit_id, city_name, lat, lng, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(id, visitId, name, lat, lng, createdAt);
+  return { id, name, lat, lng };
+}
+
 export function createVisit(
   db: Database,
   groupId: string,
@@ -312,14 +360,22 @@ export function createVisit(
   const cityName = input.cityName?.trim() || null;
   const now = new Date().toISOString();
   const id = randomUUID();
+  const cities: VisitCity[] = [];
 
+  db.exec('BEGIN');
   try {
     db.prepare(
       `INSERT INTO visits
         (id, group_id, user_id, country_code, city_name, lat, lng, visited_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id, groupId, userId, country.iso2, cityName, lat, lng, input.visitedAt, now);
+
+    if (cityName) {
+      cities.push(insertVisitCity(db, id, cityName, lat, lng, now));
+    }
+    db.exec('COMMIT');
   } catch (error) {
+    db.exec('ROLLBACK');
     if (error instanceof Error && error.message.includes('UNIQUE constraint failed: visits')) {
       throw new HttpError(409, 'Ya marcaste este país en el grupo.', {
         code: 'ALREADY_VISITED',
@@ -339,7 +395,112 @@ export function createVisit(
     lng,
     visitedAt: input.visitedAt,
     createdAt: now,
+    cities,
   };
+}
+
+export interface AddVisitCityInput {
+  name: string;
+  lat?: number;
+  lng?: number;
+}
+
+export function addVisitCity(
+  db: Database,
+  groupId: string,
+  userId: string,
+  visitId: string,
+  input: AddVisitCityInput,
+): VisitCity {
+  if (!getMembership(db, groupId, userId)) {
+    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+      code: 'GROUP_NOT_FOUND',
+    });
+  }
+
+  const visit = db
+    .prepare('SELECT id FROM visits WHERE id = ? AND group_id = ? AND user_id = ?')
+    .get(visitId, groupId, userId) as { id: string } | undefined;
+  if (!visit) {
+    throw new HttpError(404, 'No encontramos esa visita en tu recorrido.', {
+      code: 'VISIT_NOT_FOUND',
+    });
+  }
+
+  const name = input.name.trim();
+  if (!name) {
+    throw new HttpError(400, 'Ingresá el nombre de la ciudad.', { code: 'INVALID_CITY' });
+  }
+
+  const count = (
+    db.prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?').get(visitId) as {
+      count: number;
+    }
+  ).count;
+  if (count >= 20) {
+    throw new HttpError(400, 'Podés guardar hasta 20 ciudades por país.', {
+      code: 'CITY_LIMIT_REACHED',
+    });
+  }
+
+  let lat: number | null = null;
+  let lng: number | null = null;
+  if (input.lat !== undefined || input.lng !== undefined) {
+    if (!isValidCoordinates(input.lat, input.lng)) {
+      throw new HttpError(400, 'Las coordenadas de la ciudad no son válidas.', {
+        code: 'INVALID_CITY_COORDINATES',
+      });
+    }
+    lat = input.lat as number;
+    lng = input.lng as number;
+  }
+
+  try {
+    return insertVisitCity(db, visitId, name, lat, lng, new Date().toISOString());
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes('UNIQUE constraint failed: visit_cities')
+    ) {
+      throw new HttpError(409, 'Esa ciudad ya está en este país.', {
+        code: 'CITY_ALREADY_ADDED',
+      });
+    }
+    throw error;
+  }
+}
+
+export function deleteVisitCity(
+  db: Database,
+  groupId: string,
+  userId: string,
+  visitId: string,
+  cityId: string,
+): void {
+  if (!getMembership(db, groupId, userId)) {
+    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+      code: 'GROUP_NOT_FOUND',
+    });
+  }
+
+  const visit = db
+    .prepare('SELECT id FROM visits WHERE id = ? AND group_id = ? AND user_id = ?')
+    .get(visitId, groupId, userId) as { id: string } | undefined;
+  if (!visit) {
+    throw new HttpError(404, 'No encontramos esa visita en tu recorrido.', {
+      code: 'VISIT_NOT_FOUND',
+    });
+  }
+
+  const result = db
+    .prepare('DELETE FROM visit_cities WHERE id = ? AND visit_id = ?')
+    .run(cityId, visitId);
+
+  if (result.changes === 0) {
+    throw new HttpError(404, 'Esa ciudad ya no estaba en la lista.', {
+      code: 'CITY_NOT_FOUND',
+    });
+  }
 }
 
 export function deleteVisit(

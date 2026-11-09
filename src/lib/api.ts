@@ -4,6 +4,7 @@ import type {
   GroupOverview,
   GroupSummary,
   Visit,
+  VisitCity,
 } from '../../shared/types.ts';
 
 export class ApiError extends Error {
@@ -144,4 +145,25 @@ export function addVisit(
 
 export function removeVisit(groupId: string, visitId: string): Promise<void> {
   return request(`/groups/${groupId}/visits/${visitId}`, { method: 'DELETE' });
+}
+
+export function addVisitCity(
+  groupId: string,
+  visitId: string,
+  input: { name: string; lat?: number; lng?: number },
+): Promise<{ city: VisitCity }> {
+  return request(`/groups/${groupId}/visits/${visitId}/cities`, {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export function removeVisitCity(
+  groupId: string,
+  visitId: string,
+  cityId: string,
+): Promise<void> {
+  return request(`/groups/${groupId}/visits/${visitId}/cities/${cityId}`, {
+    method: 'DELETE',
+  });
 }
