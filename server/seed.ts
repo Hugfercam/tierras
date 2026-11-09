@@ -121,6 +121,10 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
       (id, group_id, user_id, country_code, city_name, lat, lng, visited_at, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
+  const insertVisitCity = db.prepare(
+    `INSERT INTO visit_cities (id, visit_id, city_name, lat, lng, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
 
   const passwordHash = hashPassword(DEMO_PASSWORD);
 
@@ -162,8 +166,10 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
         const userId = userIds.get(memberKey);
         if (!userId) continue;
         for (const visit of visits) {
+          const visitId = randomUUID();
+          const createdAt = `${visit.date}T12:00:00.000Z`;
           insertVisit.run(
-            randomUUID(),
+            visitId,
             groupId,
             userId,
             visit.country,
@@ -171,7 +177,15 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
             visit.lat,
             visit.lng,
             visit.date,
-            `${visit.date}T12:00:00.000Z`,
+            createdAt,
+          );
+          insertVisitCity.run(
+            randomUUID(),
+            visitId,
+            visit.city,
+            visit.lat,
+            visit.lng,
+            createdAt,
           );
         }
       }

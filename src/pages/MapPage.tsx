@@ -250,6 +250,7 @@ export function MapPage() {
 
       {selectedCountry && countryOpen ? (
         <CountryDialog
+          groupId={activeGroup.id}
           countryCode={selectedCountry}
           spotlight={spotlight}
           visits={overview.visits}

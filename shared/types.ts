@@ -1,4 +1,4 @@
-﻿export type GroupRole = 'owner' | 'member';
+export type GroupRole = 'owner' | 'member';
 
 export interface AuthUser {
   id: string;
@@ -35,17 +35,26 @@ export interface GroupMember {
   stats: MemberStats;
 }
 
+export interface VisitCity {
+  id: string;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+}
+
 export interface Visit {
   id: string;
   userId: string;
   countryCode: string;
   countryName: string;
   countryFlag: string;
+  /** Ciudad principal elegida al marcar el país; se conserva por compatibilidad. */
   cityName: string | null;
   lat: number;
   lng: number;
   visitedAt: string;
   createdAt: string;
+  cities: VisitCity[];
 }
 
 export interface GroupOverview {

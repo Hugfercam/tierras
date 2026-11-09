@@ -4,9 +4,11 @@ import { currentUser, requireAuth } from '../auth.ts';
 import type { Database } from '../db.ts';
 import { HttpError, parseWith } from '../errors.ts';
 import {
+  addVisitCity,
   createGroup,
   createVisit,
   deleteVisit,
+  deleteVisitCity,
   getGroupOverview,
   joinGroup,
   listGroups,
@@ -63,6 +65,26 @@ const createVisitSchema = z
     }
   });
 
+const addVisitCitySchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Ingresá el nombre de la ciudad.')
+      .max(80, 'Máximo 80 caracteres.'),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if ((value.lat === undefined) !== (value.lng === undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['lat'],
+        message: 'Latitud y longitud deben ir juntas.',
+      });
+    }
+  });
+
 export function groupRoutes(db: Database): Router {
   const router = Router();
   router.use(requireAuth(db));
@@ -103,6 +125,25 @@ export function groupRoutes(db: Database): Router {
       visitedAt: input.visitedAt || new Date().toISOString().slice(0, 10),
     });
     res.status(201).json({ visit });
+  });
+
+  router.post('/:groupId/visits/:visitId/cities', (req, res) => {
+    const user = currentUser(res);
+    const input = parseWith(addVisitCitySchema, req.body);
+    const city = addVisitCity(db, req.params.groupId, user.id, req.params.visitId, input);
+    res.status(201).json({ city });
+  });
+
+  router.delete('/:groupId/visits/:visitId/cities/:cityId', (req, res) => {
+    const user = currentUser(res);
+    deleteVisitCity(
+      db,
+      req.params.groupId,
+      user.id,
+      req.params.visitId,
+      req.params.cityId,
+    );
+    res.status(204).end();
   });
 
   router.delete('/:groupId/visits/:visitId', (req, res) => {

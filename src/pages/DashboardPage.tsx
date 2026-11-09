@@ -7,6 +7,7 @@ import {
   REGION_ORDER,
   TOTAL_COUNTRIES,
 } from '../../shared/countries.ts';
+import type { Visit } from '../../shared/types.ts';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
 import { VisitDialog } from '../components/map/VisitDialog';
@@ -24,6 +25,19 @@ import {
   formatPercent,
   todayIso,
 } from '../lib/format';
+
+function citySummary(visit: Visit): string | null {
+  // `cities` puede faltar en una respuesta vieja del cache offline; en ese caso
+  // se usa la ciudad histórica. Si la lista existe pero está vacía, se respeta.
+  const names = visit.cities
+    ? visit.cities.map((city) => city.name)
+    : visit.cityName
+      ? [visit.cityName]
+      : [];
+  if (names.length === 0) return null;
+  const shown = names.slice(0, 3).join(' · ');
+  return names.length > 3 ? `${shown} · +${names.length - 3}` : shown;
+}
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -307,10 +321,15 @@ export function DashboardPage() {
                   </span>
                   <span className="passport-card__copy">
                     <strong>{visit.countryName}</strong>
-                    <span>
-                      {visit.cityName ? `${visit.cityName} · ` : ''}
-                      {formatDate(visit.visitedAt)}
-                    </span>
+                    {citySummary(visit) ? (
+                      <span
+                        className="passport-card__cities"
+                        title={visit.cities?.map((city) => city.name).join(' · ')}
+                      >
+                        {citySummary(visit)}
+                      </span>
+                    ) : null}
+                    <span className="passport-card__date">{formatDate(visit.visitedAt)}</span>
                   </span>
                   <span className="passport-card__region">
                     {getCountry(visit.countryCode)

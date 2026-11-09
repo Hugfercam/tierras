@@ -109,12 +109,22 @@ visits (
   group_id TEXT REFERENCES groups(id),
   user_id TEXT REFERENCES users(id),
   country_code TEXT NOT NULL,
-  city_name TEXT,                        -- punto representativo opcional
-  lat REAL NOT NULL,
+  city_name TEXT,                        -- ciudad principal histórica
+  lat REAL NOT NULL,                     -- punto de referencia para km
   lng REAL NOT NULL,
   visited_at TEXT NOT NULL,              -- AAAA-MM-DD, primera visita
   created_at TEXT NOT NULL,
   UNIQUE (group_id, user_id, country_code)
+)
+
+visit_cities (
+  id TEXT PRIMARY KEY,
+  visit_id TEXT REFERENCES visits(id) ON DELETE CASCADE,
+  city_name TEXT NOT NULL COLLATE NOCASE,
+  lat REAL,
+  lng REAL,
+  created_at TEXT NOT NULL,
+  UNIQUE (visit_id, city_name)
 )
 
 sessions (
@@ -129,7 +139,9 @@ Decisiones del modelo:
 
 - **Los viajes son por grupo**, no globales. Una misma persona puede marcar Francia en dos grupos distintos. Así cada mapa tiene su propio control colectivo.
 - **Un país por persona y grupo**. La restricción `UNIQUE` evita duplicados; para corregir una fecha se quita y se vuelve a marcar.
-- **La ciudad es opcional** y actúa como punto representativo para estimar kilómetros. Si no se elige, se usa el centroide del país.
+- **Un país puede tener muchas ciudades visitadas**, guardadas en `visit_cities`. Se agregan y quitan desde la ficha del país, con nombres en español cuando el buscador tiene alias (`Gante`, `Brujas`, `Bruselas`).
+- **La ciudad principal es opcional** y actúa como punto representativo para estimar kilómetros. Si no se elige, se usa el centroide del país. Las ciudades adicionales son detalle descriptivo y **no modifican los km ni el ranking**.
+- **Migración incremental**: las visitas antiguas con `city_name` se convierten automáticamente en la primera fila de `visit_cities`; la columna original se conserva para compatibilidad.
 - **El código de invitación es permanente en esta versión** y lo ven todos los miembros del grupo. No hay enlace con caducidad.
 - **Rol**: `owner` identifica al creador; en v1 no hay permisos administrativos especiales más allá de la etiqueta.
 - **Sesión**: cookie `HttpOnly`, `SameSite=Lax`, 30 días; el token se guarda hasheado en SQLite.
@@ -181,7 +193,21 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 - Selector de grupo en el header, persistido en `localStorage`.
 - Cada grupo aísla visitas, métricas y ranking. Un usuario ajeno recibe 404, nunca datos del grupo.
 
-### 3.3 Panel personal
+### 3.3 Ciudades visitadas
+
+- La visita conserva un **punto principal** (`visits.lat/lng`) para los kilómetros y añade una lista de ciudades en `visit_cities`.
+- La ficha del país muestra un chip por ciudad debajo de cada viajero.
+- En tu propia visita, los chips se pueden quitar y aparece **“+ Añadir ciudad”**.
+- El editor busca en el índice local filtrando por país, con alias como `Gante → Gent`, `Brujas → Brugge` y `Bruselas → Brussels`.
+- Si una localidad no está en el buscador, se puede escribir libremente y se guarda sin coordenadas.
+- Se permiten hasta **20 ciudades por país**; los duplicados no distinguen mayúsculas.
+- Todo está dentro de la ficha del país: no se añade otro modal ni se altera el globo.
+- Las ciudades se muestran también en el pasaporte del panel personal.
+- Añadir o quitar ciudades **no modifica** los países, los kilómetros ni el ranking.
+
+![Ciudades de Bélgica dentro de la ficha del país](docs/screenshots/cities.webp)
+
+### 3.4 Panel personal
 
 Métricas derivadas de las visitas del usuario en el grupo activo:
 
@@ -191,9 +217,9 @@ Métricas derivadas de las visitas del usuario en el grupo activo:
 - porcentaje del atlas;
 - cobertura por continente;
 - actividad de los últimos 12 meses, año con más países y última marca;
-- pasaporte con todos los países, ciudad/fecha y acceso al país en el mapa.
+- pasaporte con todos los países, ciudades, fecha y acceso al país en el mapa.
 
-### 3.4 Ranking
+### 3.5 Ranking
 
 Tres categorías, con criterio visible en la propia pantalla:
 
@@ -203,7 +229,7 @@ Tres categorías, con criterio visible en la propia pantalla:
 
 Desempate: más países → más kilómetros → nombre alfabético. Podio para los tres primeros y tabla completa con tu fila resaltada.
 
-### 3.5 Búsqueda
+### 3.6 Búsqueda
 
 - Índice local de **197 destinos** y **4.466 ciudades** (capitales + ciudades de 100.000+ habitantes).
 - Coincidencia sin acentos y alias en español para países y ciudades frecuentes (`Londres`, `Roma`, `CDMX`, `Holanda`, etc.).
@@ -213,7 +239,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 
 ![Buscador local con Croacia](docs/screenshots/search.webp)
 
-### 3.6 PWA
+### 3.7 PWA
 
 - Manifest completo con nombre, colores, iconos 192/512/maskable, atajos e `id`.
 - Service worker generado por Workbox:
@@ -236,6 +262,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 - iniciar sesión o registrarse;
 - crear/unirse a un grupo;
 - marcar o quitar países;
+- añadir o quitar ciudades visitadas;
 - compartir una invitación nueva (copiar el enlace funciona offline, pero unirse no);
 - cualquier escritura o sincronización. No hay cola offline ni resolución de conflictos en v1.
 
@@ -263,7 +290,9 @@ Todas las rutas privadas usan cookie de sesión y comprueban membresía.
 | POST | `/api/groups/join` | Une por código. |
 | GET | `/api/groups/:id` | Overview autoritativo: miembros, visitas, stats. |
 | POST | `/api/groups/:id/visits` | Marca país con fecha/ciudad/punto opcional. |
-| DELETE | `/api/groups/:id/visits/:visitId` | Quita la visita propia. |
+| POST | `/api/groups/:id/visits/:visitId/cities` | Añade una ciudad a la visita propia. |
+| DELETE | `/api/groups/:id/visits/:visitId/cities/:cityId` | Quita una ciudad de la visita propia. |
+| DELETE | `/api/groups/:id/visits/:visitId` | Quita la visita propia y, en cascada, sus ciudades. |
 
 Errores con `{ error, code, fieldErrors? }`. El servidor valida país, fecha real, fechas futuras, coordenadas, duplicados, pertenencia y origen de mutaciones (`Origin` vs `Host`).
 
@@ -305,6 +334,7 @@ npm start
 
 - `npm run build` valida tipos, genera el cliente PWA y los estáticos en `dist/`.
 - `npm start` sirve la API y `dist/` en `http://localhost:3001`.
+- Al arrancar se crea `visit_cities` y se migran automáticamente las ciudades históricas de `visits.city_name`. Hacé un backup de la base antes del primer arranque con esta versión.
 - El servidor lee `.env` si existe (copiá `.env.example`).
 - `SEED_DEMO=false` por defecto: una base nueva arranca vacía. Para ver la demo con el build: `npm run start:demo`.
 - Si la base ya fue sembrada en desarrollo, los usuarios demo siguen existiendo. **Para un despliegue real, usá una base nueva y `SEED_DEMO=false`.**
@@ -365,13 +395,16 @@ npm run typecheck
 npm run build
 ```
 
-`npm test` usa el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
+`npm test` ejecuta **10 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
 
 - Haversine con tolerancia;
 - conteo de países/continentes y porcentaje;
 - orden cronológico y punto base sin pierna local;
 - desempate del ranking;
 - flujo API completo: registro, dos usuarios, grupo, invitación con guion, visitas, duplicado 409, métricas, borrado;
+- ciudades: alta, listado ordenado, duplicado sin distinguir mayúsculas (409), borrado, cascada al quitar el país y autorización del dueño;
+- migración idempotente de `visits.city_name` a `visit_cities`;
+- los kilómetros no cambian al agregar ciudades;
 - validación de formularios y aislamiento de grupos ajenos (404).
 
 Verificación PWA realizada en build de producción:
@@ -389,10 +422,12 @@ Verificación PWA realizada en build de producción:
 4. Marcar un país con una ciudad y una fecha; verlo en el globo y en el panel.
 5. Verificar que los km cambian y que el ranking se reordena.
 6. Buscar una ciudad, seleccionarla, abrir ficha y marcar el país.
-7. Intentar marcar el mismo país otra vez → mensaje de duplicado.
-8. Quitar una marca; confirmar que métricas y ranking se recalculan.
-9. Instalar la PWA desde el menú del navegador; recargar sin red y comprobar la lectura offline.
-10. Intentar marcar un país sin red → la UI lo impide con aviso.
+7. En la ficha del país, añadir Gante, Brujas y Bruselas a Bélgica; comprobar los chips y el pasaporte del panel.
+8. Intentar añadir una ciudad duplicada → mensaje de error; quitar una ciudad y verificar que los km no cambian.
+9. Intentar marcar el mismo país otra vez → mensaje de duplicado.
+10. Quitar una marca; confirmar que métricas y ranking se recalculan.
+11. Instalar la PWA desde el menú del navegador; recargar sin red y comprobar la lectura offline.
+12. Intentar marcar un país o editar ciudades sin red → la UI lo impide con aviso.
 
 ---
 
@@ -402,16 +437,17 @@ Estos puntos no estaban especificados y se resolvieron así para esta v1. Son lo
 
 1. **Autenticación mínima**: email + contraseña, sin verificación de email, recuperación, rate limiting ni segundo factor. Sesiones de 30 días.
 2. **Lista canónica de 197 destinos**: Estados miembros de la ONU, observadores permanentes (Vaticano y Palestina), Kosovo y Taiwán. Quedan fuera dependencias y territorios de ultramar como Groenlandia o Puerto Rico, aunque se dibujan en el globo.
-3. **Un país, una marca**: no hay historial de múltiples viajes al mismo país. La fecha es la primera visita y no se puede editar (solo quitar y volver a marcar).
-4. **Ciudad opcional**: no hay catálogo administrativo de todas las ciudades ni geocodificación inversa; el buscador cubre capitales y ciudades de 100.000+ habitantes.
-5. **País base fijo**: se elige al registrarse y no se puede cambiar en v1. Si el usuario marca su país base con una ciudad, ese punto se usa como origen.
-6. **Kilómetros estimados**: no son rutas reales ni incluyen el regreso. El total del grupo es la suma de estimaciones individuales.
-7. **Invitaciones permanentes**: cualquier miembro puede compartir el código; no hay expiración, regeneración, aprobación ni límite de usos.
-8. **Sin administración de grupo**: no hay transferencia de propiedad, expulsión, abandono, borrado de grupo ni de cuenta.
-9. **Offline de solo lectura**: las escrituras requieren red; no hay cola de sincronización ni resolución de conflictos.
-10. **Sin notificaciones, chat, fotos ni redes**: intencionalmente fuera de alcance.
-11. **Privacidad**: no hay perfiles públicos. Un grupo solo es accesible con sesión y membresía. Los datos de la API cacheada se purgan al cambiar de cuenta.
-12. **Una sola instancia**: SQLite + proceso único; para escalar habría que migrar a Postgres y almacenamiento de sesiones compartido.
+3. **Un país, una marca**: no hay historial de múltiples viajes al mismo país. La fecha es la primera visita y no se puede editar (solo quitar y volver a marcar). Las ciudades comparten esa fecha del país.
+4. **Ciudades opcionales y abiertas**: no hay catálogo administrativo de todas las ciudades ni geocodificación inversa. El buscador cubre capitales y ciudades de 100.000+ habitantes; las localidades fuera del dataset se pueden escribir libremente, sin coordenadas.
+5. **Las ciudades no alteran los km**: el punto principal del país sigue determinando la estimación. Si en el futuro se quieren rutas ciudad a ciudad, habría que cambiar el modelo y recalcular métricas.
+6. **País base fijo**: se elige al registrarse y no se puede cambiar en v1. Si el usuario marca su país base con una ciudad, ese punto se usa como origen.
+7. **Kilómetros estimados**: no son rutas reales ni incluyen el regreso. El total del grupo es la suma de estimaciones individuales.
+8. **Invitaciones permanentes**: cualquier miembro puede compartir el código; no hay expiración, regeneración, aprobación ni límite de usos.
+9. **Sin administración de grupo**: no hay transferencia de propiedad, expulsión, abandono, borrado de grupo ni de cuenta.
+10. **Offline de solo lectura**: las escrituras requieren red; no hay cola de sincronización ni resolución de conflictos.
+11. **Sin notificaciones, chat, fotos ni redes**: intencionalmente fuera de alcance.
+12. **Privacidad**: no hay perfiles públicos. Un grupo solo es accesible con sesión y membresía. Los datos de la API cacheada se purgan al cambiar de cuenta.
+13. **Una sola instancia**: SQLite + proceso único; para escalar habría que migrar a Postgres y almacenamiento de sesiones compartido.
 
 ---
 

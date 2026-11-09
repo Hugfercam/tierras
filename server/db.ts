@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -81,10 +82,71 @@ function migrate(db: Database): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS visit_cities (
+      id TEXT PRIMARY KEY,
+      visit_id TEXT NOT NULL REFERENCES visits(id) ON DELETE CASCADE,
+      city_name TEXT NOT NULL COLLATE NOCASE,
+      lat REAL,
+      lng REAL,
+      created_at TEXT NOT NULL,
+      UNIQUE (visit_id, city_name)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
     CREATE INDEX IF NOT EXISTS idx_visits_group ON visits(group_id);
     CREATE INDEX IF NOT EXISTS idx_visits_user_group ON visits(user_id, group_id);
+    CREATE INDEX IF NOT EXISTS idx_visit_cities_visit ON visit_cities(visit_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   `);
+
+  migrateLegacyCities(db);
+}
+
+/**
+ * Las versiones anteriores guardaban una sola ciudad en visits.city_name.
+ * La convertimos en la primera fila de visit_cities sin borrar ni modificar
+ * la columna original, que sigue siendo el punto de referencia para los km.
+ */
+function migrateLegacyCities(db: Database): void {
+  const pending = db
+    .prepare(
+      `SELECT v.id, TRIM(v.city_name) AS city_name, v.lat, v.lng, v.created_at
+       FROM visits v
+       WHERE v.city_name IS NOT NULL
+         AND TRIM(v.city_name) <> ''
+         AND NOT EXISTS (SELECT 1 FROM visit_cities c WHERE c.visit_id = v.id)`,
+    )
+    .all() as unknown as Array<{
+    id: string;
+    city_name: string;
+    lat: number;
+    lng: number;
+    created_at: string;
+  }>;
+
+  if (pending.length === 0) return;
+
+  const insert = db.prepare(
+    `INSERT INTO visit_cities (id, visit_id, city_name, lat, lng, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+
+  db.exec('BEGIN');
+  try {
+    for (const visit of pending) {
+      insert.run(
+        randomUUID(),
+        visit.id,
+        visit.city_name,
+        Number.isFinite(visit.lat) ? visit.lat : null,
+        Number.isFinite(visit.lng) ? visit.lng : null,
+        visit.created_at,
+      );
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
 }
