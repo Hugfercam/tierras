@@ -207,6 +207,25 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 
 ![Ciudades de Bélgica dentro de la ficha del país](docs/screenshots/cities.webp)
 
+#### Puntos en el globo y baliza
+
+- Cada ciudad con coordenadas se dibuja como un **punto pequeño** sobre el globo.
+- En vista **Todo el grupo** los puntos son dorados y se agrupan por coordenadas: Bruselas visitada por tres personas es un solo punto.
+- En vista de un **miembro** se muestran solo sus ciudades y toman su color de identidad.
+- Al hacer click en un punto, la cámara enfoca la ciudad y aparece una **baliza**: bandera, anillo pulsante, nombre de la ciudad y cantidad de viajeros.
+- La etiqueta de la baliza abre la ficha del país; la “×” o un click en el océano la cierran.
+- Mientras hay una baliza activa se pausa la rotación automática.
+- La capa se puede apagar con el interruptor **“Ciudades visitadas”** en la barra lateral.
+- Si la ciudad no tiene coordenadas, no se inventa una ubicación: se muestra en la ficha y en el pasaporte, pero no en el mapa.
+- Buscar una ciudad ya visitada abre directamente su baliza.
+- Los puntos y la baliza son solo visuales: **no alteran kilómetros, países ni ranking**.
+
+![Baliza de Bruselas sobre el globo](docs/screenshots/beacon.webp)
+
+En móvil la ficha del país sigue siendo una hoja inferior y la baliza conserva la etiqueta legible:
+
+![Baliza de ciudad en móvil](docs/screenshots/beacon-mobile.webp)
+
 ### 3.4 Panel personal
 
 Métricas derivadas de las visitas del usuario en el grupo activo:
@@ -234,7 +253,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 - Índice local de **197 destinos** y **4.466 ciudades** (capitales + ciudades de 100.000+ habitantes).
 - Coincidencia sin acentos y alias en español para países y ciudades frecuentes (`Londres`, `Roma`, `CDMX`, `Holanda`, etc.).
 - Teclado: flechas, Enter y Escape; resultados con bandera, país y tipo.
-- Seleccionar un país o ciudad enfoca el globo, marca el punto y abre la ficha del país con acceso a "Marcar que estuve".
+- Seleccionar un país o una ciudad no visitada enfoca el globo y abre la ficha del país; si la ciudad ya está registrada en la capa activa, abre su baliza.
 - Funciona sin conexión porque el índice viaja en el bundle.
 
 ![Buscador local con Croacia](docs/screenshots/search.webp)
@@ -253,6 +272,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 
 - abrir la app instalada y navegar por el shell;
 - globo 3D, capas y datos de la última sincronización;
+- puntos de ciudades y balizas usando las coordenadas cacheadas;
 - panel, ranking y grupo con la copia cacheada;
 - búsqueda local de países y ciudades;
 - banderas, fuentes e iconos.
@@ -268,7 +288,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 
 Al cerrar sesión, expirar la sesión o iniciar sesión con otra cuenta se vacía el cache de API (`tierras-api-*`) para no mezclar datos privados. La UI muestra un aviso "Sin conexión · datos guardados".
 
-El paquete offline pesa ~4,6 MB porque incluye Three.js, el atlas geográfico y 197 banderas SVG; el JS comprimido son ~826 KB.
+El paquete offline pesa ~4,6 MB porque incluye Three.js, el atlas geográfico y 197 banderas SVG; el JS comprimido son ~830 KB.
 
 ![Mapa funcionando sin conexión con los datos del grupo](docs/screenshots/offline.webp)
 
@@ -395,7 +415,7 @@ npm run typecheck
 npm run build
 ```
 
-`npm test` ejecuta **10 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
+`npm test` ejecuta **12 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
 
 - Haversine con tolerancia;
 - conteo de países/continentes y porcentaje;
@@ -405,6 +425,7 @@ npm run build
 - ciudades: alta, listado ordenado, duplicado sin distinguir mayúsculas (409), borrado, cascada al quitar el país y autorización del dueño;
 - migración idempotente de `visits.city_name` a `visit_cities`;
 - los kilómetros no cambian al agregar ciudades;
+- construcción de marcadores de ciudad: agrupación por coordenadas, filtrado por miembro y omisión de ciudades sin ubicación;
 - validación de formularios y aislamiento de grupos ajenos (404).
 
 Verificación PWA realizada en build de producción:
@@ -423,11 +444,13 @@ Verificación PWA realizada en build de producción:
 5. Verificar que los km cambian y que el ranking se reordena.
 6. Buscar una ciudad, seleccionarla, abrir ficha y marcar el país.
 7. En la ficha del país, añadir Gante, Brujas y Bruselas a Bélgica; comprobar los chips y el pasaporte del panel.
-8. Intentar añadir una ciudad duplicada → mensaje de error; quitar una ciudad y verificar que los km no cambian.
-9. Intentar marcar el mismo país otra vez → mensaje de duplicado.
-10. Quitar una marca; confirmar que métricas y ranking se recalculan.
-11. Instalar la PWA desde el menú del navegador; recargar sin red y comprobar la lectura offline.
-12. Intentar marcar un país o editar ciudades sin red → la UI lo impide con aviso.
+8. Cerrar la ficha, hacer click en el punto de Bruselas y comprobar la baliza, la bandera, la etiqueta y el acceso a la ficha.
+9. Buscar “Bruselas” y comprobar que abre directamente la baliza; apagar y encender “Ciudades visitadas”.
+10. Intentar añadir una ciudad duplicada → mensaje de error; quitar una ciudad y verificar que los km no cambian.
+11. Intentar marcar el mismo país otra vez → mensaje de duplicado.
+12. Quitar una marca; confirmar que métricas y ranking se recalculan.
+13. Instalar la PWA desde el menú del navegador; recargar sin red y comprobar la lectura offline.
+14. Intentar marcar un país o editar ciudades sin red → la UI lo impide con aviso.
 
 ---
 
@@ -438,7 +461,7 @@ Estos puntos no estaban especificados y se resolvieron así para esta v1. Son lo
 1. **Autenticación mínima**: email + contraseña, sin verificación de email, recuperación, rate limiting ni segundo factor. Sesiones de 30 días.
 2. **Lista canónica de 197 destinos**: Estados miembros de la ONU, observadores permanentes (Vaticano y Palestina), Kosovo y Taiwán. Quedan fuera dependencias y territorios de ultramar como Groenlandia o Puerto Rico, aunque se dibujan en el globo.
 3. **Un país, una marca**: no hay historial de múltiples viajes al mismo país. La fecha es la primera visita y no se puede editar (solo quitar y volver a marcar). Las ciudades comparten esa fecha del país.
-4. **Ciudades opcionales y abiertas**: no hay catálogo administrativo de todas las ciudades ni geocodificación inversa. El buscador cubre capitales y ciudades de 100.000+ habitantes; las localidades fuera del dataset se pueden escribir libremente, sin coordenadas.
+4. **Ciudades opcionales y abiertas**: no hay catálogo administrativo de todas las ciudades ni geocodificación inversa. El buscador cubre capitales y ciudades de 100.000+ habitantes; las localidades fuera del dataset se pueden escribir libremente, sin coordenadas. Las ciudades sin coordenadas no se dibujan en el globo y no hay clustering avanzado: en zonas densas se elige el punto visible más cercano.
 5. **Las ciudades no alteran los km**: el punto principal del país sigue determinando la estimación. Si en el futuro se quieren rutas ciudad a ciudad, habría que cambiar el modelo y recalcular métricas.
 6. **País base fijo**: se elige al registrarse y no se puede cambiar en v1. Si el usuario marca su país base con una ciudad, ese punto se usa como origen.
 7. **Kilómetros estimados**: no son rutas reales ni incluyen el regreso. El total del grupo es la suma de estimaciones individuales.

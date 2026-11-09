@@ -14,6 +14,9 @@ interface MapSidebarProps {
   currentUserId: string;
   onMarkCountry: () => void;
   groupName: string;
+  showCities: boolean;
+  cityCount: number;
+  onToggleCities: () => void;
 }
 
 export function MapSidebar({
@@ -23,6 +26,9 @@ export function MapSidebar({
   currentUserId,
   onMarkCountry,
   groupName,
+  showCities,
+  cityCount,
+  onToggleCities,
 }: MapSidebarProps) {
   const selectedMember = overview.members.find((member) => member.id === layer) ?? null;
   const memberVisits = (memberId: string) =>
@@ -90,6 +96,27 @@ export function MapSidebar({
             />
           ))}
         </div>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showCities}
+          className={cn('city-layer-toggle', showCities && 'is-on')}
+          onClick={onToggleCities}
+        >
+          <span className="city-layer-toggle__icon">
+            <Icon name="locate" size={15} />
+          </span>
+          <span className="city-layer-toggle__copy">
+            <strong>Ciudades visitadas</strong>
+            <small>
+              {cityCount} {cityCount === 1 ? 'punto en el mapa' : 'puntos en el mapa'}
+            </small>
+          </span>
+          <span className="city-layer-toggle__switch" aria-hidden="true">
+            <span />
+          </span>
+        </button>
       </section>
 
       <section className="map-panel map-panel--stats">

@@ -10,8 +10,7 @@ data/*.db-shm
 data/*.db-wal
 
 # Herramientas de verificación visual
-.chrome-profile/
-.chrome-cdp/
+.chrome-*/
 .chrome-pid
 capture-*.png
 screenshot-*.png

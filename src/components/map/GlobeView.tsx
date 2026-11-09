@@ -3,7 +3,14 @@ import { countryName } from '../../../shared/countries.ts';
 import type { GroupMember, Visit } from '../../../shared/types.ts';
 import { useReducedMotion } from '../../hooks/useUi';
 import { cn } from '../../lib/cn';
-import { GlobeEngine, type GlobeData, type GlobeFocusTarget } from '../../lib/globeEngine';
+import type { CityMarker } from '../../lib/cityMarkers';
+import {
+  GlobeEngine,
+  type BeaconScreenPosition,
+  type GlobeData,
+  type GlobeFocusTarget,
+} from '../../lib/globeEngine';
+import { CityBeacon } from './CityBeacon';
 import { CountryFlag } from '../ui/CountryFlag';
 import { Icon } from '../ui/Icons';
 
@@ -13,7 +20,11 @@ interface GlobeViewProps {
   layer: string;
   selectedCountry: string | null;
   focusTarget: GlobeFocusTarget | null;
+  cityMarkers: CityMarker[];
+  showCities: boolean;
+  selectedCity: CityMarker | null;
   onCountrySelect: (iso2: string | null) => void;
+  onCitySelect: (city: CityMarker | null) => void;
   className?: string;
 }
 
@@ -29,18 +40,27 @@ export function GlobeView({
   layer,
   selectedCountry,
   focusTarget,
+  cityMarkers,
+  showCities,
+  selectedCity,
   onCountrySelect,
+  onCitySelect,
   className,
 }: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GlobeEngine | null>(null);
   const onCountryRef = useRef(onCountrySelect);
+  const onCityRef = useRef(onCitySelect);
+  const cityMarkersRef = useRef(cityMarkers);
   const [hover, setHover] = useState<HoverState | null>(null);
+  const [beaconScreen, setBeaconScreen] = useState<BeaconScreenPosition | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [failed, setFailed] = useState(false);
   const reducedMotion = useReducedMotion();
 
   onCountryRef.current = onCountrySelect;
+  onCityRef.current = onCitySelect;
+  cityMarkersRef.current = cityMarkers;
 
   const visitorCount = useMemo(() => {
     if (!hover) return 0;
@@ -57,6 +77,10 @@ export function GlobeView({
         container,
         {
           onCountryClick: (iso2) => onCountryRef.current(iso2),
+          onCityClick: (cityId) => {
+            const city = cityMarkersRef.current.find((marker) => marker.id === cityId);
+            if (city) onCityRef.current(city);
+          },
           onHover: (payload) => {
             if (!payload) {
               setHover(null);
@@ -64,6 +88,7 @@ export function GlobeView({
             }
             setHover({ iso2: payload.iso2, x: payload.x, y: payload.y });
           },
+          onBeaconScreen: (position) => setBeaconScreen(position),
         },
         { reducedMotion },
       );
@@ -92,6 +117,18 @@ export function GlobeView({
     const data: GlobeData = { visits, members, layer, selectedCountry };
     engineRef.current?.setData(data);
   }, [layer, members, selectedCountry, visits]);
+
+  useEffect(() => {
+    engineRef.current?.setCityMarkers(cityMarkers, showCities);
+  }, [cityMarkers, showCities]);
+
+  useEffect(() => {
+    setBeaconScreen(null);
+    if (!engineRef.current) return;
+    engineRef.current.selectCity(
+      selectedCity ? { lat: selectedCity.lat, lng: selectedCity.lng } : null,
+    );
+  }, [selectedCity]);
 
   useEffect(() => {
     if (!engineRef.current) return;
@@ -137,6 +174,15 @@ export function GlobeView({
             </small>
           </span>
         </div>
+      ) : null}
+
+      {selectedCity && beaconScreen ? (
+        <CityBeacon
+          marker={selectedCity}
+          screen={beaconScreen}
+          onClose={() => onCityRef.current(null)}
+          onOpenCountry={(countryCode) => onCountryRef.current(countryCode)}
+        />
       ) : null}
 
       <div className="globe__controls" aria-label="Controles del globo">

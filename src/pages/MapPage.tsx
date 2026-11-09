@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { PlaceResult, Visit } from '../../shared/types.ts';
 import { countryName } from '../../shared/countries.ts';
@@ -8,6 +8,7 @@ import { useGroup } from '../contexts/GroupContext';
 import { useToast } from '../contexts/ToastContext';
 import { useOnlineStatus } from '../hooks/useUi';
 import { ApiError, removeVisit } from '../lib/api';
+import { buildCityMarkers, type CityMarker } from '../lib/cityMarkers';
 import { countryToPlace } from '../lib/places';
 import { formatInteger, formatKm } from '../lib/format';
 import { CountryDialog } from '../components/map/CountryDialog';
@@ -48,7 +49,13 @@ export function MapPage() {
   const [visitInitial, setVisitInitial] = useState<PlaceResult | null>(null);
   const [pendingRemove, setPendingRemove] = useState<Visit | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [showCities, setShowCities] = useState(true);
+  const [selectedCity, setSelectedCity] = useState<CityMarker | null>(null);
   const processedCountryParam = useRef<string | null>(null);
+  const cityMarkers = useMemo(
+    () => (overview ? buildCityMarkers(overview, layer) : []),
+    [layer, overview],
+  );
 
   useEffect(() => {
     setLayer('group');
@@ -58,7 +65,16 @@ export function MapPage() {
     setFocusTarget(null);
     setVisitOpen(false);
     setPendingRemove(null);
+    setSelectedCity(null);
+    setShowCities(true);
   }, [activeGroupId]);
+
+  useEffect(() => {
+    if (!selectedCity) return;
+    if (!cityMarkers.some((marker) => marker.id === selectedCity.id)) {
+      setSelectedCity(null);
+    }
+  }, [cityMarkers, selectedCity]);
 
   useEffect(() => {
     const iso2 = searchParams.get('pais');
@@ -69,6 +85,7 @@ export function MapPage() {
     if (!place) return;
     processedCountryParam.current = key;
     setSelectedCountry(place.countryCode);
+    setSelectedCity(null);
     setSpotlight(place);
     setFocusTarget({ lat: place.lat, lng: place.lng, key: Date.now() });
     setCountryOpen(false);
@@ -105,14 +122,42 @@ export function MapPage() {
   const currentUserId = user?.id ?? '';
   const selectedMember = overview.members.find((member) => member.id === layer) ?? null;
 
+  const handleCitySelect = (city: CityMarker | null) => {
+    if (!city) {
+      setSelectedCity(null);
+      setSelectedCountry(null);
+      return;
+    }
+    setSelectedCity(city);
+    setSelectedCountry(city.countryCode);
+    setSpotlight(null);
+    setFocusTarget(null);
+    setCountryOpen(false);
+  };
+
   const handleSearchSelect = (place: PlaceResult) => {
+    if (showCities && place.type === 'city') {
+      const visitedCity = cityMarkers.find(
+        (marker) =>
+          marker.countryCode === place.countryCode &&
+          Math.abs(marker.lat - place.lat) < 0.02 &&
+          Math.abs(marker.lng - place.lng) < 0.02,
+      );
+      if (visitedCity) {
+        handleCitySelect(visitedCity);
+        return;
+      }
+    }
+
     setSelectedCountry(place.countryCode);
+    setSelectedCity(null);
     setSpotlight(place);
     setFocusTarget({ lat: place.lat, lng: place.lng, key: Date.now() });
     setCountryOpen(false);
   };
 
   const handleCountryClick = (iso2: string | null) => {
+    setSelectedCity(null);
     if (!iso2) {
       setCountryOpen(false);
       return;
@@ -123,7 +168,20 @@ export function MapPage() {
     setCountryOpen(true);
   };
 
+  const handleLayerChange = (nextLayer: string) => {
+    setLayer(nextLayer);
+    setSelectedCity(null);
+    setSelectedCountry(null);
+  };
+
+  const handleToggleCities = () => {
+    setShowCities((current) => !current);
+    setSelectedCity(null);
+    setSelectedCountry(null);
+  };
+
   const handleMarkCountry = () => {
+    setSelectedCity(null);
     const place =
       spotlight && selectedCountry && spotlight.countryCode === selectedCountry
         ? spotlight
@@ -166,7 +224,11 @@ export function MapPage() {
             layer={layer}
             selectedCountry={selectedCountry}
             focusTarget={focusTarget}
+            cityMarkers={cityMarkers}
+            showCities={showCities}
+            selectedCity={selectedCity}
             onCountrySelect={handleCountryClick}
+            onCitySelect={handleCitySelect}
           />
 
           <div className="map-search">
@@ -238,13 +300,16 @@ export function MapPage() {
         <MapSidebar
           overview={overview}
           layer={layer}
-          onLayerChange={setLayer}
+          onLayerChange={handleLayerChange}
           currentUserId={currentUserId}
           onMarkCountry={() => {
             setVisitInitial(null);
             setVisitOpen(true);
           }}
           groupName={activeGroup.name}
+          showCities={showCities}
+          cityCount={cityMarkers.length}
+          onToggleCities={handleToggleCities}
         />
       </div>
 

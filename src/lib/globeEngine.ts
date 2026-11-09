@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { GroupMember, Visit } from '../../shared/types.ts';
 import { countryAtPoint } from './atlas';
+import type { CityMarker } from './cityMarkers';
 import { drawGlobeTexture, type MapLayer } from './globeTexture';
 
 export interface GlobeData {
@@ -17,9 +18,17 @@ export interface GlobeFocusTarget {
   key: number;
 }
 
+export interface BeaconScreenPosition {
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
 interface GlobeCallbacks {
   onCountryClick: (iso2: string | null) => void;
+  onCityClick: (cityId: string) => void;
   onHover: (payload: { iso2: string; x: number; y: number } | null) => void;
+  onBeaconScreen: (position: BeaconScreenPosition | null) => void;
 }
 
 const RADIUS = 1.8;
@@ -58,8 +67,13 @@ export class GlobeEngine {
   private controls: OrbitControls;
   private globeGroup = new THREE.Group();
   private globeMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshPhongMaterial>;
+  private cityMesh: THREE.InstancedMesh | null = null;
+  private cityMarkers: CityMarker[] = [];
   private marker: THREE.Group | null = null;
   private markerRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial> | null = null;
+  private beaconTarget: { lat: number; lng: number } | null = null;
+  private lastBeaconUpdate = 0;
+  private lastBeaconScreen: BeaconScreenPosition | null = null;
   private frame = 0;
   private resizeObserver: ResizeObserver;
   private width = 1;
@@ -285,6 +299,62 @@ export class GlobeEngine {
     if (changed) this.updateTexture();
   }
 
+  setCityMarkers(markers: CityMarker[], visible: boolean): void {
+    this.cityMarkers = markers;
+    if (this.cityMesh) {
+      this.globeGroup.remove(this.cityMesh);
+      this.cityMesh.geometry.dispose();
+      (this.cityMesh.material as THREE.Material).dispose();
+      this.cityMesh = null;
+    }
+    if (!visible || markers.length === 0) return;
+
+    const geometry = new THREE.SphereGeometry(0.018, 8, 6);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.92,
+      depthWrite: false,
+    });
+    const mesh = new THREE.InstancedMesh(geometry, material, markers.length);
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    markers.forEach((marker, index) => {
+      dummy.position.copy(latLngToVector(marker.lat, marker.lng, RADIUS * 1.012));
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      color.set(marker.color);
+      mesh.setColorAt(index, color);
+    });
+
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    mesh.renderOrder = 2;
+    this.globeGroup.add(mesh);
+    this.cityMesh = mesh;
+  }
+
+  selectCity(target: { lat: number; lng: number } | null): void {
+    if (!target) {
+      this.beaconTarget = null;
+      this.lastBeaconUpdate = 0;
+      this.lastBeaconScreen = null;
+      this.callbacks.onBeaconScreen(null);
+      this.hideMarker();
+      if (this.autoRotateEnabled) {
+        this.resumeAutoRotateAt = performance.now() + 1500;
+      }
+      return;
+    }
+
+    this.beaconTarget = { lat: target.lat, lng: target.lng };
+    this.lastBeaconUpdate = 0;
+    this.lastBeaconScreen = null;
+    this.focus({ lat: target.lat, lng: target.lng, key: performance.now() });
+  }
+
   focus(target: GlobeFocusTarget): void {
     const local = latLngToVector(target.lat, target.lng, 1);
     const worldDirection = local.clone().applyQuaternion(this.globeGroup.quaternion).normalize();
@@ -420,6 +490,24 @@ export class GlobeEngine {
     return countryAtPoint(lat, lng);
   }
 
+  private identifyCity(x: number, y: number): string | null {
+    if (!this.cityMesh || !this.cityMesh.visible) return null;
+
+    // Los puntos son pequeños: para ratón y especialmente para touch elegimos
+    // el marcador visible más cercano dentro de un radio de 16 px.
+    let nearest: { id: string; distance: number } | null = null;
+    for (const marker of this.cityMarkers) {
+      const screen = this.projectCity(marker.lat, marker.lng);
+      if (!screen.visible) continue;
+      const distance = Math.hypot(screen.x - x, screen.y - y);
+      if (distance > 16) continue;
+      if (!nearest || distance < nearest.distance) {
+        nearest = { id: marker.id, distance };
+      }
+    }
+    return nearest?.id ?? null;
+  }
+
   private handlePointerDown = (event: PointerEvent): void => {
     this.pointerDown = {
       x: event.clientX,
@@ -453,6 +541,11 @@ export class GlobeEngine {
     const moved = Math.hypot(event.clientX - down.x, event.clientY - down.y);
     if (moved > 7 || performance.now() - down.time > 800) return;
     const point = this.pointerCoordinates(event);
+    const cityId = this.identifyCity(point.x, point.y);
+    if (cityId) {
+      this.callbacks.onCityClick(cityId);
+      return;
+    }
     const iso2 = this.identifyCountry(point.x, point.y);
     this.callbacks.onCountryClick(iso2);
   };
@@ -463,12 +556,57 @@ export class GlobeEngine {
     this.callbacks.onHover(null);
   };
 
+  private projectCity(lat: number, lng: number): BeaconScreenPosition {
+    const local = latLngToVector(lat, lng, RADIUS * 1.035);
+    const world = local.applyQuaternion(this.globeGroup.quaternion);
+    const normal = world.clone().normalize();
+    const cameraDirection = this.camera.position.clone().normalize();
+    const frontFacing = normal.dot(cameraDirection) > 0.06;
+
+    this.camera.updateMatrixWorld();
+    const projected = world.clone().project(this.camera);
+    const x = (projected.x * 0.5 + 0.5) * this.width;
+    const y = (-projected.y * 0.5 + 0.5) * this.height;
+    const inBounds =
+      x > -80 && x < this.width + 80 && y > -80 && y < this.height + 80;
+
+    return {
+      x,
+      y,
+      visible: frontFacing && projected.z < 1 && inBounds,
+    };
+  }
+
+  private updateBeaconScreen(now: number): void {
+    if (!this.beaconTarget) return;
+    if (now - this.lastBeaconUpdate < 60) return;
+    this.lastBeaconUpdate = now;
+
+    const position = this.projectCity(this.beaconTarget.lat, this.beaconTarget.lng);
+    const previous = this.lastBeaconScreen;
+    if (
+      previous &&
+      previous.visible === position.visible &&
+      Math.abs(previous.x - position.x) < 0.5 &&
+      Math.abs(previous.y - position.y) < 0.5
+    ) {
+      return;
+    }
+    this.lastBeaconScreen = position;
+    this.callbacks.onBeaconScreen(position);
+  }
+
   private animate = (): void => {
     if (this.disposed) return;
     this.frame = requestAnimationFrame(this.animate);
     const now = performance.now();
 
-    if (!this.controls.autoRotate && this.autoRotateEnabled && now > this.resumeAutoRotateAt) {
+    if (
+      !this.controls.autoRotate &&
+      this.autoRotateEnabled &&
+      !this.beaconTarget &&
+      now > this.resumeAutoRotateAt
+    ) {
       this.controls.autoRotate = true;
     }
 
@@ -504,6 +642,7 @@ export class GlobeEngine {
     }
 
     this.controls.update();
+    this.updateBeaconScreen(now);
 
     if (this.marker && this.marker.visible && !this.reducedMotion) {
       const pulse = (Math.sin(now * 0.004) + 1) / 2;
