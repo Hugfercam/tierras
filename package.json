@@ -16,7 +16,7 @@
     "start:demo": "cross-env SEED_DEMO=true node server/index.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-isolation=none tests/geo.test.ts tests/api.test.ts tests/cities.test.ts",
+    "test": "node --test --test-isolation=none tests/geo.test.ts tests/api.test.ts tests/cities.test.ts tests/city-markers.test.ts",
     "data": "node scripts/build-data.mjs",
     "icons": "python scripts/make-icons.py"
   },
