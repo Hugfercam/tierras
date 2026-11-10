@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Tierras — mapa de viajes compartido',
         short_name: 'Tierras',
         description:
-          'El mapa de viajes privado de tu grupo: marcá países, mirá el globo y comparen sus recorridos.',
+          'El mapa de viajes privado de tu grupo: marca países, mira el globo y compara sus recorridos.',
         lang: 'es',
         dir: 'ltr',
         start_url: '/',

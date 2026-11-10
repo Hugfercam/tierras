@@ -76,7 +76,7 @@ export function DashboardPage() {
     return (
       <PageError
         title="No pudimos cargar tu panel."
-        description="Revisá tu conexión y volvé a intentarlo."
+        description="Revisa tu conexión y vuelve a intentarlo."
       />
     );
   }
@@ -92,7 +92,7 @@ export function DashboardPage() {
     return (
       <PageError
         title="No pudimos abrir tu panel."
-        description="Revisá tu conexión o recargá los datos del grupo."
+        description="Revisa tu conexión o recarga los datos del grupo."
         onRetry={refetchOverview}
       />
     );
@@ -289,7 +289,7 @@ export function DashboardPage() {
                   <span>
                     {latest
                       ? `última marca · ${formatDate(latest.visitedAt)}`
-                      : 'tu próxima marca empieza acá'}
+                      : 'tu próxima marca empieza aquí'}
                   </span>
                 </div>
               </div>
@@ -344,7 +344,7 @@ export function DashboardPage() {
             <EmptyState
               icon={<Icon name="globe" size={30} />}
               title="Tu pasaporte está esperando la primera marca."
-              description="Sumá el primer país y empezá a ver tu recorrido, tus kilómetros y tu lugar en el grupo."
+              description="Suma el primer país y empieza a ver tu recorrido, tus kilómetros y tu lugar en el grupo."
               actions={
                 <Button onClick={() => setVisitOpen(true)}>
                   <Icon name="plus" size={17} />

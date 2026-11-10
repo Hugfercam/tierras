@@ -112,7 +112,7 @@ export function createGroup(
       if (!exists) break;
       inviteCode = generateInviteCode();
       if (attempt === 11) {
-        throw new HttpError(500, 'No pudimos generar un código de invitación. Intentá de nuevo.');
+        throw new HttpError(500, 'No pudimos generar un código de invitación. Intenta de nuevo.');
       }
     }
 
@@ -154,7 +154,7 @@ export function joinGroup(db: Database, userId: string, rawCode: string): GroupS
 
   const existing = getMembership(db, group.id, userId);
   if (existing) {
-    throw new HttpError(409, 'Ya formás parte de este grupo.', { code: 'ALREADY_MEMBER' });
+    throw new HttpError(409, 'Ya formas parte de este grupo.', { code: 'ALREADY_MEMBER' });
   }
 
   const now = new Date().toISOString();
@@ -189,7 +189,7 @@ export function getGroupOverview(
 ): GroupOverview {
   const membership = getMembership(db, groupId, userId);
   if (!membership) {
-    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+    throw new HttpError(404, 'No encontramos ese grupo o no tienes acceso.', {
       code: 'GROUP_NOT_FOUND',
     });
   }
@@ -344,7 +344,7 @@ export function createVisit(
   input: CreateVisitInput,
 ): Visit {
   if (!getMembership(db, groupId, userId)) {
-    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+    throw new HttpError(404, 'No encontramos ese grupo o no tienes acceso.', {
       code: 'GROUP_NOT_FOUND',
     });
   }
@@ -413,7 +413,7 @@ export function addVisitCity(
   input: AddVisitCityInput,
 ): VisitCity {
   if (!getMembership(db, groupId, userId)) {
-    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+    throw new HttpError(404, 'No encontramos ese grupo o no tienes acceso.', {
       code: 'GROUP_NOT_FOUND',
     });
   }
@@ -429,7 +429,7 @@ export function addVisitCity(
 
   const name = input.name.trim();
   if (!name) {
-    throw new HttpError(400, 'Ingresá el nombre de la ciudad.', { code: 'INVALID_CITY' });
+    throw new HttpError(400, 'Introduce el nombre de la ciudad.', { code: 'INVALID_CITY' });
   }
 
   const count = (
@@ -438,7 +438,7 @@ export function addVisitCity(
     }
   ).count;
   if (count >= 20) {
-    throw new HttpError(400, 'Podés guardar hasta 20 ciudades por país.', {
+    throw new HttpError(400, 'Puedes guardar hasta 20 ciudades por país.', {
       code: 'CITY_LIMIT_REACHED',
     });
   }
@@ -478,7 +478,7 @@ export function deleteVisitCity(
   cityId: string,
 ): void {
   if (!getMembership(db, groupId, userId)) {
-    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+    throw new HttpError(404, 'No encontramos ese grupo o no tienes acceso.', {
       code: 'GROUP_NOT_FOUND',
     });
   }
@@ -510,7 +510,7 @@ export function deleteVisit(
   visitId: string,
 ): void {
   if (!getMembership(db, groupId, userId)) {
-    throw new HttpError(404, 'No encontramos ese grupo o no tenés acceso.', {
+    throw new HttpError(404, 'No encontramos ese grupo o no tienes acceso.', {
       code: 'GROUP_NOT_FOUND',
     });
   }
@@ -520,7 +520,7 @@ export function deleteVisit(
     .run(visitId, groupId, userId);
 
   if (result.changes === 0) {
-    throw new HttpError(404, 'Ese país ya no estaba marcado por vos.', {
+    throw new HttpError(404, 'Ese país ya no estaba marcado por ti.', {
       code: 'VISIT_NOT_FOUND',
     });
   }

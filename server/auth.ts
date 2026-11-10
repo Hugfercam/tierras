@@ -118,7 +118,7 @@ export function requireAuth(db: Database) {
     const token = readSessionToken(req);
     const user = findSessionUser(db, token);
     if (!user) {
-      res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.', code: 'UNAUTHENTICATED' });
+      res.status(401).json({ error: 'Tu sesión expiró. Inicia sesión de nuevo.', code: 'UNAUTHENTICATED' });
       return;
     }
     res.locals.user = user;

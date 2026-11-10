@@ -154,7 +154,7 @@ export function VisitCities({
                 type="button"
                 className="city-chip__remove"
                 aria-label={`Quitar ${city.name}`}
-                title={online ? `Quitar ${city.name}` : 'Necesitás conexión'}
+                title={online ? `Quitar ${city.name}` : 'Necesitas conexión'}
                 disabled={!online || removingId === city.id}
                 onClick={() => handleRemove(city.id, city.name)}
               >
@@ -177,7 +177,7 @@ export function VisitCities({
               setError(null);
             }}
             disabled={!online}
-            title={online ? 'Añadir una ciudad' : 'Necesitás conexión'}
+            title={online ? 'Añadir una ciudad' : 'Necesitas conexión'}
           >
             <Icon name="plus" size={12} />
             {open ? 'Cerrar' : 'Añadir ciudad'}
@@ -245,14 +245,14 @@ export function VisitCities({
             )
           ) : (
             <p className="city-editor__hint">
-              Las del buscador se guardan con coordenadas; también podés escribir una localidad
+              Las del buscador se guardan con coordenadas; también puedes escribir una localidad
               libre. Las ciudades no modifican los km estimados del país.
             </p>
           )}
 
           {error ? <p className="city-editor__error">{error}</p> : null}
           {!online ? (
-            <p className="city-editor__error">Necesitás conexión para editar ciudades.</p>
+            <p className="city-editor__error">Necesitas conexión para editar ciudades.</p>
           ) : null}
         </div>
       ) : null}

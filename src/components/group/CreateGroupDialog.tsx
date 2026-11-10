@@ -34,7 +34,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
     event.preventDefault();
     const cleanName = name.trim();
     if (cleanName.length < 2) {
-      setFieldError('Poné un nombre de al menos 2 caracteres.');
+      setFieldError('Pon un nombre de al menos 2 caracteres.');
       return;
     }
     setLoading(true);
@@ -48,7 +48,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
         setFieldError(caught.fieldErrors?.name ?? null);
         setError(caught.message);
       } else {
-        setError('No pudimos crear el grupo. Intentá de nuevo.');
+        setError('No pudimos crear el grupo. Intenta de nuevo.');
       }
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
     <Modal
       title="Crear un grupo"
       eyebrow="Un nuevo mapa compartido"
-      description="Reuní a tus personas y empiecen a marcar los países que ya conocen."
+      description="Reúne a tu gente para empezar a marcar los países que ya conocen."
       onClose={onClose}
       size="sm"
       footer={
@@ -98,7 +98,7 @@ export function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialo
         {error && !fieldError ? <p className="form-error">{error}</p> : null}
         {!online ? (
           <p className="form-note form-note--warn">
-            Sin conexión. Para crear un grupo necesitás estar online.
+            Sin conexión. Para crear un grupo necesitas estar online.
           </p>
         ) : (
           <p className="form-note">

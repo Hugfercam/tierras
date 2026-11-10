@@ -33,7 +33,7 @@ export function GroupPage() {
     return (
       <PageError
         title="No pudimos cargar el grupo."
-        description="Revisá tu conexión y volvé a intentarlo."
+        description="Revisa tu conexión y vuelve a intentarlo."
       />
     );
   }
@@ -49,7 +49,7 @@ export function GroupPage() {
     return (
       <PageError
         title="No pudimos abrir este grupo."
-        description="Revisá tu conexión o recargá los datos."
+        description="Revisa tu conexión o recarga los datos."
         onRetry={refetchOverview}
       />
     );
@@ -60,7 +60,7 @@ export function GroupPage() {
 
   const copy = async (value: string, message: string) => {
     const success = await copyText(value);
-    toast(success ? message : 'No pudimos copiar. Seleccioná el código manualmente.', success ? 'success' : 'error');
+    toast(success ? message : 'No pudimos copiar. Selecciona el código manualmente.', success ? 'success' : 'error');
   };
 
   const share = async () => {
@@ -71,7 +71,7 @@ export function GroupPage() {
     try {
       await navigator.share({
         title: `Sumate a ${activeGroup.name} en Tierras`,
-        text: `Estoy armando el mapa de viajes de ${activeGroup.name}. Entrá con este enlace:`,
+        text: `Estoy armando el mapa de viajes de ${activeGroup.name}. Entra con este enlace:`,
         url: link,
       });
     } catch {
@@ -116,9 +116,9 @@ export function GroupPage() {
             <span className="eyebrow__line" />
             Invitación abierta
           </p>
-          <h2>Sumá a tu gente al mapa.</h2>
+          <h2>Suma a tu gente al mapa.</h2>
           <p>
-            Compartí este código solo con quienes quieras. Cualquier persona con el enlace puede
+            Comparte este código solo con quienes quieras. Cualquier persona con el enlace puede
             entrar al grupo.
           </p>
           <div className="invite-card__actions">
@@ -188,7 +188,7 @@ export function GroupPage() {
                   <div className="member-card__identity">
                     <h3>
                       {member.name}
-                      {member.id === user?.id ? <span className="you-tag">Vos</span> : null}
+                      {member.id === user?.id ? <span className="you-tag">Tú</span> : null}
                     </h3>
                     <p>
                       <CountryFlag code={member.homeCountryCode} size="xs" />{' '}

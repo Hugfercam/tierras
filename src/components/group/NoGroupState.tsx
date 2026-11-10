@@ -23,7 +23,7 @@ export function NoGroupState({ compact = false }: { compact?: boolean }) {
         Tu mapa empieza <em>con tu gente.</em>
       </h1>
       <p className="no-group__lede">
-        Creá un grupo privado o unite con un código. Después cada persona marca sus países y el
+        Crea un grupo privado o únete con un código. Después cada persona marca sus países y el
         recorrido se vuelve compartido.
       </p>
       <div className="no-group__actions">
@@ -41,7 +41,7 @@ export function NoGroupState({ compact = false }: { compact?: boolean }) {
           <Icon name="lock" size={14} /> Solo entra quien tiene el código
         </span>
         <span>
-          <Icon name="users" size={14} /> Amigos, familia o quien vos elijas
+          <Icon name="users" size={14} /> Amigos, familia o quien tú elijas
         </span>
       </div>
     </section>

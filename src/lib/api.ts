@@ -47,7 +47,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
     throw new ApiError(
-      'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.',
+      'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.',
       { code: 'NETWORK_ERROR' },
     );
   }

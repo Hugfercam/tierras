@@ -48,7 +48,7 @@ export function LeaderboardPage() {
     return (
       <PageError
         title="No pudimos cargar el ranking."
-        description="Revisá tu conexión y volvé a intentarlo."
+        description="Revisa tu conexión y vuelve a intentarlo."
       />
     );
   }
@@ -64,7 +64,7 @@ export function LeaderboardPage() {
     return (
       <PageError
         title="No pudimos abrir el ranking."
-        description="Revisá tu conexión o recargá los datos del grupo."
+        description="Revisa tu conexión o recarga los datos del grupo."
         onRetry={refetchOverview}
       />
     );
@@ -88,7 +88,7 @@ export function LeaderboardPage() {
             Quién va <em>más lejos.</em>
           </h1>
           <p className="page-head__lede">
-            Una foto amistosa del recorrido del grupo. Elegí la categoría y mirá cómo se mueven
+            Una foto amistosa del recorrido del grupo. Elige la categoría y mira cómo se mueven
             las posiciones.
           </p>
         </div>
@@ -140,7 +140,7 @@ export function LeaderboardPage() {
               />
               <div className="podium-card__name">
                 <strong>{member.name}</strong>
-                {member.id === user?.id ? <span className="you-tag">Vos</span> : null}
+                {member.id === user?.id ? <span className="you-tag">Tú</span> : null}
                 <small>
                   <CountryFlag code={member.homeCountryCode} size="xs" /> Base en{' '}
                   {getCountry(member.homeCountryCode)?.name ?? member.homeCountryCode}
@@ -180,7 +180,7 @@ export function LeaderboardPage() {
                   <div className="ranking-row__identity">
                     <strong>
                       {member.name}
-                      {member.id === user?.id ? <span className="you-tag">Vos</span> : null}
+                      {member.id === user?.id ? <span className="you-tag">Tú</span> : null}
                     </strong>
                     <span>{secondaryLabel(member, metricId)}</span>
                   </div>

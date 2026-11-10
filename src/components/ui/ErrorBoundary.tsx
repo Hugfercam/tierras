@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
             <Icon name="compass" size={34} />
           </span>
           <h1>Perdimos el rumbo por un momento.</h1>
-          <p>Recargá la página para volver al mapa.</p>
+          <p>Recarga la página para volver al mapa.</p>
           <Button onClick={() => window.location.reload()}>Recargar Tierras</Button>
         </div>
       );

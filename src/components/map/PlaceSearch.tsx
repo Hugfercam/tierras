@@ -140,7 +140,7 @@ export function PlaceSearch({
             <div className="place-results__empty">
               <Icon name="search" size={18} />
               <p>No encontramos “{deferredQuery.trim()}”.</p>
-              <span>Probá con otro nombre o usá el nombre en inglés.</span>
+              <span>Prueba con otro nombre o usa el nombre en inglés.</span>
             </div>
           ) : (
             results.map((place, index) => (

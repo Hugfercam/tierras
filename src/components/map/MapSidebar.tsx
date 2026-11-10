@@ -180,7 +180,7 @@ export function MapSidebar({
               <span>4+</span>
             </div>
             <p>
-              Cuanto más cálido el país, más personas del grupo ya lo marcaron. Tocá un país para
+              Cuanto más cálido el país, más personas del grupo ya lo marcaron. Toca un país para
               ver quién estuvo.
             </p>
           </>
@@ -217,7 +217,7 @@ function MemberLayer({
       <span className="layer-option__copy">
         <strong>
           {member.name}
-          {isMe ? <span className="you-tag">Vos</span> : null}
+          {isMe ? <span className="you-tag">Tú</span> : null}
         </strong>
         <small>
           {formatInteger(count)} {count === 1 ? 'país' : 'países'}

@@ -62,7 +62,7 @@ export function LoginPage() {
         setError(caught.message);
         setFieldErrors(caught.fieldErrors ?? {});
       } else {
-        setError('No pudimos iniciar sesión. Intentá de nuevo.');
+        setError('No pudimos iniciar sesión. Intenta de nuevo.');
       }
     } finally {
       setSubmitting(false);
@@ -97,7 +97,7 @@ export function LoginPage() {
           Qué bueno <em>verte.</em>
         </h2>
         <p className="auth-form__subtitle">
-          Entrá para seguir sumando países con tu grupo.
+          Entra para seguir sumando países con tu grupo.
         </p>
 
         <form className="auth-form__fields" onSubmit={handleSubmit} noValidate>
@@ -110,7 +110,7 @@ export function LoginPage() {
                 className="input"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="vos@ejemplo.com"
+                placeholder="tu@ejemplo.com"
                 autoComplete="email"
                 autoFocus
                 required
@@ -165,7 +165,7 @@ export function LoginPage() {
                 <Icon name="sparkle" size={16} />
               </span>
               <div>
-                <strong>Probá con el grupo demo</strong>
+                <strong>Prueba con el grupo demo</strong>
                 <p>Los Trotamundos, con cuatro viajeros y un mapa ya recorrido.</p>
               </div>
             </div>
@@ -176,7 +176,7 @@ export function LoginPage() {
         ) : null}
 
         <p className="auth-switch">
-          ¿Todavía no tenés cuenta?{' '}
+          ¿Todavía no tienes cuenta?{' '}
           <Link to="/registro" state={{ from }}>
             Crear una cuenta
           </Link>

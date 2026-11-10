@@ -28,7 +28,7 @@ export function parseWith<T>(schema: ZodType<T>, input: unknown): T {
     if (!fieldErrors[key]) fieldErrors[key] = issue.message;
   }
 
-  throw new HttpError(400, 'Revisá los datos del formulario.', {
+  throw new HttpError(400, 'Revisa los datos del formulario.', {
     code: 'VALIDATION_ERROR',
     fieldErrors,
   });

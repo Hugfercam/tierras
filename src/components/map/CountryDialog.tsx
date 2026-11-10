@@ -65,7 +65,7 @@ export function CountryDialog({
         ownVisit ? (
           <>
             <span className="country-dialog__own">
-              <Icon name="check" size={15} /> Marcado por vos
+              <Icon name="check" size={15} /> Marcado por ti
             </span>
             <Button variant="ghost" onClick={() => onRemove(ownVisit)} disabled={!online}>
               <Icon name="trash" size={16} />
@@ -75,7 +75,7 @@ export function CountryDialog({
         ) : (
           <>
             <span className="country-dialog__offline-hint">
-              {online ? 'Se sumará a tu recorrido en este grupo.' : 'Necesitás conexión para marcar.'}
+              {online ? 'Se sumará a tu recorrido en este grupo.' : 'Necesitas conexión para marcar.'}
             </span>
             <Button onClick={onMark} disabled={!online}>
               <Icon name="plus" size={17} />
@@ -138,7 +138,7 @@ export function CountryDialog({
                   <div className="visitor-row__copy">
                     <strong>
                       {entry.member.name}
-                      {visit.userId === currentUserId ? <span className="you-tag">Vos</span> : null}
+                      {visit.userId === currentUserId ? <span className="you-tag">Tú</span> : null}
                     </strong>
                     <span className="visitor-row__date">{formatDate(visit.visitedAt)}</span>
                     <VisitCities
@@ -163,7 +163,7 @@ export function CountryDialog({
           <div className="country-dialog__empty">
             <Icon name="globe" size={24} />
             <p>Este país todavía no está en el mapa de {groupName}.</p>
-            <span>Podés ser la primera persona en sumarlo.</span>
+            <span>Puedes ser la primera persona en sumarlo.</span>
           </div>
         )}
       </div>

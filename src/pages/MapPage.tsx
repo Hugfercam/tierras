@@ -97,7 +97,7 @@ export function MapPage() {
     return (
       <PageError
         title="No pudimos cargar tus grupos."
-        description="Puede que estés sin conexión. Probá de nuevo."
+        description="Puede que estés sin conexión. Prueba de nuevo."
       />
     );
   }
@@ -113,7 +113,7 @@ export function MapPage() {
     return (
       <PageError
         title="No pudimos abrir este mapa."
-        description="Revisá tu conexión o intentá recargar los datos del grupo."
+        description="Revisa tu conexión o intenta recargar los datos del grupo."
         onRetry={refetchOverview}
       />
     );
@@ -293,7 +293,7 @@ export function MapPage() {
 
           <div className="map-note">
             <Icon name="info" size={14} />
-            <span>Tocá un país para ver quién estuvo</span>
+            <span>Toca un país para ver quién estuvo</span>
           </div>
         </div>
 
