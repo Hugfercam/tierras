@@ -514,7 +514,7 @@ npm run staging:local
 npm run smoke:staging
 ```
 
-También hay un `docker-compose.staging.yml` con volumen `tierras-staging-data` y healthcheck. Guía completa: [docs/staging.md](docs/staging.md).
+También hay un `docker-compose.staging.yml` con volumen `tierras-staging-data` y healthcheck. Guía completa: [docs/staging.md](docs/staging.md). Estudio de hosting, dominio y email: [docs/estudio-staging.md](docs/estudio-staging.md).
 
 Checklist de producción:
 

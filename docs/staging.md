@@ -9,6 +9,8 @@ Entorno de validación previo a producción. No debe compartir base de datos ni 
 - Un dominio o URL de staging y, preferiblemente, HTTPS.
 - Datos reales del responsable para `VITE_LEGAL_*`.
 
+Estudio de proveedores y costes: [estudio-staging.md](estudio-staging.md).
+
 ## 1. Configuración
 
 ```powershell
