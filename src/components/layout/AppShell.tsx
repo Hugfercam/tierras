@@ -16,14 +16,14 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/mapa', label: 'Mapa', icon: 'map' },
-  { to: '/panel', label: 'Mi panel', icon: 'grid' },
+  { to: '/panel', label: 'Pasaporte', icon: 'grid' },
   { to: '/ranking', label: 'Ranking', icon: 'trophy' },
   { to: '/grupo', label: 'Grupo', icon: 'users' },
 ];
 
 const TITLES: Record<string, string> = {
   '/mapa': 'Mapa compartido',
-  '/panel': 'Mi panel',
+  '/panel': 'Mi pasaporte',
   '/ranking': 'Ranking del grupo',
   '/grupo': 'Mi grupo',
 };
@@ -83,7 +83,7 @@ export function AppShell() {
             className={({ isActive }) => cn('bottom-nav__link', isActive && 'is-active')}
           >
             <Icon name={item.icon} size={21} />
-            <span>{item.label === 'Mi panel' ? 'Panel' : item.label}</span>
+            <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>

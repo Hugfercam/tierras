@@ -3,7 +3,13 @@ import test, { after, before } from 'node:test';
 import type { Server } from 'node:http';
 import { createApp } from '../server/app.ts';
 import type { Database } from '../server/db.ts';
-import type { GroupOverview, GroupSummary, AuthUser } from '../shared/types.ts';
+import type {
+  AuthUser,
+  GroupOverview,
+  GroupSummary,
+  PersonalOverview,
+  Trip,
+} from '../shared/types.ts';
 
 let server: Server;
 let db: Database;
@@ -66,6 +72,7 @@ test('flujo principal: registro, grupo, invitación, visitas y ranking', async (
   });
   assert.equal(registerLucia.response.status, 201);
   const luciaCookie = cookieFrom(registerLucia.response);
+  const luciaId = registerLucia.data.user.id;
 
   const registerMateo = await api<{ user: AuthUser }>('/auth/register', {
     method: 'POST',
@@ -137,8 +144,7 @@ test('flujo principal: registro, grupo, invitación, visitas y ranking', async (
       body: { countryCode: 'FR', visitedAt: '2024-04-10' },
     },
   );
-  assert.equal(duplicateVisit.response.status, 409);
-  assert.equal(duplicateVisit.data.code, 'ALREADY_VISITED');
+  assert.equal(duplicateVisit.response.status, 201, 'Ahora se permiten varios viajes al mismo país');
 
   const overview = await api<GroupOverview>('/groups/' + created.data.group.id, {
     cookie: luciaCookie,
@@ -146,15 +152,19 @@ test('flujo principal: registro, grupo, invitación, visitas y ranking', async (
   assert.equal(overview.response.status, 200);
   assert.equal(overview.data.members.length, 2);
   assert.equal(overview.data.stats.countries, 2);
-  assert.equal(overview.data.stats.visits, 2);
+  assert.equal(overview.data.stats.visits, 3);
+  assert.equal(overview.data.stats.trips, 3);
   const lucia = overview.data.members.find((member) => member.name === 'Lucía Prueba');
   assert.ok(lucia);
   assert.equal(lucia.stats.countries, 1);
   assert.ok(lucia.stats.kilometers > 500);
   assert.equal(lucia.stats.percentWorld, 0.5);
+  assert.equal(lucia.stats.trips, 2);
 
+  const luciaVisitToRemove = overview.data.visits.find((visit) => visit.userId === luciaId);
+  assert.ok(luciaVisitToRemove);
   const removed = await api<null>(
-    `/groups/${created.data.group.id}/visits/${overview.data.visits[0].id}`,
+    `/groups/${created.data.group.id}/visits/${luciaVisitToRemove.id}`,
     { method: 'DELETE', cookie: luciaCookie },
   );
   assert.equal(removed.response.status, 204);
@@ -162,7 +172,7 @@ test('flujo principal: registro, grupo, invitación, visitas y ranking', async (
   const afterRemove = await api<GroupOverview>('/groups/' + created.data.group.id, {
     cookie: luciaCookie,
   });
-  assert.equal(afterRemove.data.stats.visits, 1);
+  assert.equal(afterRemove.data.stats.visits, 2);
 });
 
 test('validación y acceso: sin sesión y grupos ajenos', async () => {
@@ -208,4 +218,175 @@ test('validación y acceso: sin sesión y grupos ajenos', async () => {
   const foreign = await api<{ code: string }>('/groups/' + group.id, { cookie: diegoCookie });
   assert.equal(foreign.response.status, 404);
   assert.equal(foreign.data.code, 'GROUP_NOT_FOUND');
+});
+
+test('viajes multipaís, participantes y varios viajes al mismo país', async () => {
+  const ana = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Ana Viajes',
+      email: 'ana.viajes@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+    },
+  });
+  const anaCookie = cookieFrom(ana.response);
+  const beto = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Beto Viajes',
+      email: 'beto.viajes@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+    },
+  });
+  const betoCookie = cookieFrom(beto.response);
+  const betoId = beto.data.user.id;
+
+  const groupResponse = await api<{ group: GroupSummary }>('/groups', {
+    method: 'POST',
+    cookie: anaCookie,
+    body: { name: 'Viajes compartidos' },
+  });
+  const group = groupResponse.data.group;
+  await api('/groups/join', {
+    method: 'POST',
+    cookie: betoCookie,
+    body: { inviteCode: group.inviteCode },
+  });
+
+  const collective = await api<{ trip: Trip }>('/trips', {
+    method: 'POST',
+    cookie: anaCookie,
+    body: {
+      title: 'Bélgica y Países Bajos',
+      startDate: '2026-11-03',
+      endDate: '2026-11-07',
+      stops: [
+        { countryCode: 'BE', cityName: 'Brujas', lat: 51.2089, lng: 3.2242, startDate: '2026-11-03' },
+        { countryCode: 'BE', cityName: 'Bruselas', lat: 50.8505, lng: 4.3488, startDate: '2026-11-05' },
+        { countryCode: 'NL', cityName: 'Ámsterdam', lat: 52.3676, lng: 4.9041, startDate: '2026-11-07' },
+      ],
+      participantIds: [betoId],
+    },
+  });
+  assert.equal(collective.response.status, 201);
+  assert.deepEqual(collective.data.trip.countries.sort(), ['BE', 'NL']);
+  assert.equal(collective.data.trip.participants.length, 2);
+  assert.deepEqual(
+    collective.data.trip.stops.map((stop) => stop.cityName),
+    ['Brujas', 'Bruselas', 'Ámsterdam'],
+  );
+
+  const anaPersonal = await api<PersonalOverview>('/me/overview', { cookie: anaCookie });
+  const betoPersonal = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
+  for (const personal of [anaPersonal, betoPersonal]) {
+    assert.equal(personal.data.stats.countries, 2);
+    assert.equal(personal.data.stats.trips, 1);
+    assert.equal(personal.data.visits.length, 2);
+  }
+
+  const groupOverview = await api<GroupOverview>('/groups/' + group.id, {
+    cookie: anaCookie,
+  });
+  assert.equal(groupOverview.data.stats.countries, 2);
+  assert.equal(groupOverview.data.stats.trips, 1);
+  assert.equal(groupOverview.data.visits.length, 4);
+  for (const member of groupOverview.data.members) {
+    assert.equal(member.stats.countries, 2);
+    assert.equal(member.stats.trips, 1);
+  }
+
+  const secondBelgium = await api<{ trip: Trip }>('/trips', {
+    method: 'POST',
+    cookie: anaCookie,
+    body: {
+      title: 'Bélgica en 2028',
+      startDate: '2028-03-01',
+      endDate: '2028-03-03',
+      stops: [{ countryCode: 'BE', cityName: 'Gante', lat: 51.05, lng: 3.7167 }],
+    },
+  });
+  assert.equal(secondBelgium.response.status, 201);
+
+  const afterSecond = await api<PersonalOverview>('/me/overview', { cookie: anaCookie });
+  assert.equal(afterSecond.data.stats.countries, 2);
+  assert.equal(afterSecond.data.stats.trips, 2);
+  assert.equal(
+    afterSecond.data.stats.kilometers,
+    anaPersonal.data.stats.kilometers,
+    'Un segundo viaje al mismo país no debe duplicar los kilómetros del ranking',
+  );
+  const belgium = afterSecond.data.visits.find((visit) => visit.countryCode === 'BE');
+  assert.ok(belgium);
+  assert.equal(belgium.tripCount, 2);
+
+  const groupAfterSecond = await api<GroupOverview>('/groups/' + group.id, {
+    cookie: anaCookie,
+  });
+  assert.equal(groupAfterSecond.data.stats.trips, 2);
+  assert.equal(groupAfterSecond.data.stats.countries, 2);
+  assert.equal(
+    groupAfterSecond.data.visits.filter((visit) => visit.userId === ana.data.user.id).length,
+    3,
+  );
+
+  const patched = await api<{ trip: Trip }>(`/trips/${secondBelgium.data.trip.id}`, {
+    method: 'PATCH',
+    cookie: anaCookie,
+    body: {
+      title: 'Bélgica y Países Bajos en 2028',
+      startDate: '2028-03-01',
+      endDate: '2028-03-05',
+      stops: [
+        { countryCode: 'BE', cityName: 'Gante', lat: 51.05, lng: 3.7167 },
+        { countryCode: 'NL', cityName: 'Róterdam', lat: 51.9244, lng: 4.4777 },
+      ],
+      participantIds: [betoId],
+    },
+  });
+  assert.equal(patched.response.status, 200);
+  assert.deepEqual(patched.data.trip.countries.sort(), ['BE', 'NL']);
+  assert.equal(patched.data.trip.participants.length, 2);
+
+  const betoAfterPatch = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
+  assert.equal(betoAfterPatch.data.stats.trips, 2);
+  assert.equal(betoAfterPatch.data.stats.countries, 2);
+});
+
+test('el pasaporte personal funciona sin grupo', async () => {
+  const solo = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Solo Viajes',
+      email: 'solo.viajes@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+    },
+  });
+  const cookie = cookieFrom(solo.response);
+
+  const empty = await api<PersonalOverview>('/me/overview', { cookie });
+  assert.equal(empty.response.status, 200);
+  assert.equal(empty.data.stats.trips, 0);
+  assert.equal(empty.data.stats.countries, 0);
+  assert.deepEqual(empty.data.visits, []);
+
+  const created = await api<{ trip: Trip }>('/trips', {
+    method: 'POST',
+    cookie,
+    body: {
+      title: 'Escapada sola',
+      startDate: '2026-09-10',
+      endDate: '2026-09-12',
+      stops: [{ countryCode: 'PT', cityName: 'Lisboa', lat: 38.7223, lng: -9.1393 }],
+    },
+  });
+  assert.equal(created.response.status, 201);
+  assert.equal(created.data.trip.participants.length, 1);
+
+  const after = await api<PersonalOverview>('/me/overview', { cookie });
+  assert.equal(after.data.stats.trips, 1);
+  assert.equal(after.data.stats.countries, 1);
+  assert.equal(after.data.visits[0].tripCount, 1);
 });

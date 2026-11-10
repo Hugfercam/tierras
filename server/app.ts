@@ -6,6 +6,7 @@ import { openDatabase, type Database } from './db.ts';
 import { HttpError } from './errors.ts';
 import { authRoutes } from './routes/auth.ts';
 import { groupRoutes } from './routes/groups.ts';
+import { meRoutes, tripRoutes } from './routes/trips.ts';
 import { DEMO_ACCOUNT } from './seed.ts';
 
 export interface AppOptions {
@@ -75,6 +76,8 @@ export function createApp(options: AppOptions): AppBundle {
 
   app.use('/api/auth', authRoutes(db));
   app.use('/api/groups', groupRoutes(db));
+  app.use('/api/trips', tripRoutes(db));
+  app.use('/api/me', meRoutes(db));
 
   app.use('/api', (_req, _res, next) => {
     next(new HttpError(404, 'Ruta no encontrada.', { code: 'NOT_FOUND' }));

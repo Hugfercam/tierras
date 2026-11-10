@@ -71,7 +71,12 @@ export function VisitCities({
   }, [open]);
 
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ['group', groupId, 'overview'] });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['group', groupId, 'overview'] }),
+      queryClient.invalidateQueries({ queryKey: ['personal', 'overview'] }),
+      queryClient.invalidateQueries({ queryKey: ['trips'] }),
+      queryClient.invalidateQueries({ queryKey: ['groups'] }),
+    ]);
 
   const addCity = async (name: string, lat?: number, lng?: number) => {
     if (!name.trim() || !online) return;

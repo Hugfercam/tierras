@@ -66,6 +66,28 @@ function schemaVersion(database: Database): number {
 function createLegacyDatabase(file: string, options: { withCitiesTable?: boolean } = {}): void {
   const raw = new DatabaseSync(file);
   raw.exec(`
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      password_hash TEXT NOT NULL,
+      home_country_code TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner_id TEXT NOT NULL,
+      invite_code TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE memberships (
+      group_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      joined_at TEXT NOT NULL,
+      PRIMARY KEY (group_id, user_id)
+    );
     CREATE TABLE visits (
       id TEXT PRIMARY KEY,
       group_id TEXT NOT NULL,
@@ -78,6 +100,12 @@ function createLegacyDatabase(file: string, options: { withCitiesTable?: boolean
       created_at TEXT NOT NULL,
       UNIQUE (group_id, user_id, country_code)
     );
+    INSERT INTO users VALUES
+      ('u', 'Usuario legado', 'u@example.test', 'hash', 'ES', '2024-01-01T00:00:00Z');
+    INSERT INTO groups VALUES
+      ('g', 'Grupo legado', 'u', 'LEGACY01', '2024-01-01T00:00:00Z');
+    INSERT INTO memberships VALUES
+      ('g', 'u', 'owner', '2024-01-01T00:00:00Z');
   `);
   if (options.withCitiesTable) {
     raw.exec(`
@@ -230,7 +258,7 @@ test('las ciudades se agregan, se listan y no alteran los km', async () => {
     },
   );
   assert.equal(mateoTriesToEdit.response.status, 404);
-  assert.equal(mateoTriesToEdit.data.code, 'VISIT_NOT_FOUND');
+  assert.equal(mateoTriesToEdit.data.code, 'TRIP_NOT_FOUND');
 
   const removed = await api<null>(
     `/groups/${group.id}/visits/${createdVisit.data.visit.id}/cities/${gante.data.city.id}`,
@@ -238,9 +266,11 @@ test('las ciudades se agregan, se listan y no alteran los km', async () => {
   );
   assert.equal(removed.response.status, 204);
 
+  const tripId = createdVisit.data.visit.tripId;
+  assert.ok(tripId);
   const citiesBeforeCountryDelete = db
-    .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
-    .get(createdVisit.data.visit.id) as { count: number };
+    .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
+    .get(tripId) as { count: number };
   assert.equal(citiesBeforeCountryDelete.count, 2);
 
   const countryDelete = await api<null>(
@@ -250,8 +280,8 @@ test('las ciudades se agregan, se listan y no alteran los km', async () => {
   assert.equal(countryDelete.response.status, 204);
 
   const citiesAfterCountryDelete = db
-    .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
-    .get(createdVisit.data.visit.id) as { count: number };
+    .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
+    .get(tripId) as { count: number };
   assert.equal(citiesAfterCountryDelete.count, 0);
 });
 
@@ -264,14 +294,14 @@ test('la semilla demo crea una ciudad por cada visita', async () => {
     serveStatic: false,
   });
   try {
-    const visits = bundle.db.prepare('SELECT COUNT(*) AS count FROM visits').get() as {
+    const trips = bundle.db.prepare('SELECT COUNT(*) AS count FROM trips').get() as {
       count: number;
     };
-    const cities = bundle.db.prepare('SELECT COUNT(*) AS count FROM visit_cities').get() as {
-      count: number;
-    };
-    assert.ok(visits.count > 0);
-    assert.equal(cities.count, visits.count);
+    const tripsWithStops = bundle.db
+      .prepare('SELECT COUNT(DISTINCT trip_id) AS count FROM trip_stops')
+      .get() as { count: number };
+    assert.ok(trips.count > 0);
+    assert.equal(tripsWithStops.count, trips.count);
   } finally {
     bundle.db.close();
     await Promise.all([
@@ -289,20 +319,20 @@ test('la migración convierte visits.city_name en la primera ciudad', async () =
   try {
     const migrated = openDatabase({ file, seedDemo: false });
     const rows = migrated
-      .prepare('SELECT city_name, lat, lng FROM visit_cities WHERE visit_id = ?')
+      .prepare('SELECT city_name, lat, lng FROM trip_stops WHERE trip_id = ?')
       .all('legacy-visit') as Array<{ city_name: string; lat: number; lng: number }>;
     assert.equal(rows.length, 1);
     assert.equal(rows[0].city_name, 'Bruselas');
     assert.equal(rows[0].lat, 50.85);
-    assert.equal(schemaVersion(migrated), 1);
+    assert.equal(schemaVersion(migrated), 2);
     migrated.close();
 
     const reopened = openDatabase({ file, seedDemo: false });
     const count = reopened
-      .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+      .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
       .get('legacy-visit') as { count: number };
     assert.equal(count.count, 1, 'La migración debe ser idempotente');
-    assert.equal(schemaVersion(reopened), 1);
+    assert.equal(schemaVersion(reopened), 2);
     reopened.close();
   } finally {
     await removeDatabase(file);
@@ -317,13 +347,13 @@ test('una migración ya aplicada no restaura ciudades borradas al reabrir', asyn
     const migrated = openDatabase({ file, seedDemo: false });
     try {
       const initial = migrated
-        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
         .get('legacy-visit') as { count: number };
       assert.equal(initial.count, 1);
 
-      migrated.prepare('DELETE FROM visit_cities WHERE visit_id = ?').run('legacy-visit');
+      migrated.prepare('DELETE FROM trip_stops WHERE trip_id = ?').run('legacy-visit');
       const deleted = migrated
-        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
         .get('legacy-visit') as { count: number };
       assert.equal(deleted.count, 0);
     } finally {
@@ -333,10 +363,10 @@ test('una migración ya aplicada no restaura ciudades borradas al reabrir', asyn
     const reopened = openDatabase({ file, seedDemo: false });
     try {
       const count = reopened
-        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
         .get('legacy-visit') as { count: number };
       assert.equal(count.count, 0, 'Las ciudades borradas no deben resucitar');
-      assert.equal(schemaVersion(reopened), 1);
+      assert.equal(schemaVersion(reopened), 2);
     } finally {
       reopened.close();
     }
@@ -353,10 +383,10 @@ test('una base existente con visit_cities vacía no se backfillea al actualizar'
     const upgraded = openDatabase({ file, seedDemo: false });
     try {
       const count = upgraded
-        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
         .get('legacy-visit') as { count: number };
       assert.equal(count.count, 0, 'La actualización no debe recuperar ciudades borradas');
-      assert.equal(schemaVersion(upgraded), 1);
+      assert.equal(schemaVersion(upgraded), 2);
     } finally {
       upgraded.close();
     }

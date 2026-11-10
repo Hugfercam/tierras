@@ -24,6 +24,7 @@ export interface MemberStats {
   kilometers: number;
   continents: number;
   percentWorld: number;
+  trips?: number;
 }
 
 export interface GroupMember {
@@ -44,6 +45,10 @@ export interface VisitCity {
 
 export interface Visit {
   id: string;
+  /** Identificador real de la fila trip_countries cuando `id` es sintético. */
+  tripCountryId?: string;
+  tripId?: string;
+  tripTitle?: string;
   userId: string;
   countryCode: string;
   countryName: string;
@@ -55,6 +60,60 @@ export interface Visit {
   visitedAt: string;
   createdAt: string;
   cities: VisitCity[];
+  startDate?: string;
+  endDate?: string;
+  participants?: TripParticipant[];
+  canEdit?: boolean;
+  tripCount?: number;
+}
+
+export interface TripStop {
+  id: string;
+  countryCode: string;
+  countryName: string;
+  countryFlag: string;
+  cityName: string | null;
+  lat: number | null;
+  lng: number | null;
+  position: number;
+  startDate: string | null;
+  endDate: string | null;
+  note: string | null;
+}
+
+export interface TripParticipant {
+  id: string;
+  name: string;
+  homeCountryCode: string;
+  role: 'owner' | 'member';
+}
+
+export interface Trip {
+  id: string;
+  ownerId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  countries: string[];
+  stops: TripStop[];
+  participants: TripParticipant[];
+  isOwner: boolean;
+}
+
+export interface PersonalOverview {
+  user: {
+    id: string;
+    name: string;
+    homeCountryCode: string;
+  };
+  stats: MemberStats & {
+    trips: number;
+    days: number;
+    cities: number;
+  };
+  trips: Trip[];
+  visits: Visit[];
 }
 
 export interface GroupOverview {
@@ -75,6 +134,7 @@ export interface GroupOverview {
     kilometers: number;
     continents: number;
     visits: number;
+    trips?: number;
   };
 }
 
