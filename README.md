@@ -39,7 +39,7 @@ No hay proveedor de mapas, geocodificación ni autenticación externos. Eso mant
 .
 ├── server/
 │   ├── app.ts                 # Express, seguridad, API y estáticos
-│   ├── db.ts                  # SQLite y migración inicial
+│   ├── db.ts                  # SQLite y migraciones versionadas
 │   ├── auth.ts                # scrypt, sesiones y cookies
 │   ├── group-service.ts       # grupos, visitas y métricas
 │   ├── seed.ts                # datos demo idempotentes
@@ -141,7 +141,7 @@ Decisiones del modelo:
 - **Un país por persona y grupo**. La restricción `UNIQUE` evita duplicados; para corregir una fecha se quita y se vuelve a marcar.
 - **Un país puede tener muchas ciudades visitadas**, guardadas en `visit_cities`. Se agregan y quitan desde la ficha del país, con nombres en español cuando el buscador tiene alias (`Gante`, `Brujas`, `Bruselas`).
 - **La ciudad principal es opcional** y actúa como punto representativo para estimar kilómetros. Si no se elige, se usa el centroide del país. Las ciudades adicionales son detalle descriptivo y **no modifican los km ni el ranking**.
-- **Migración incremental**: las visitas antiguas con `city_name` se convierten automáticamente en la primera fila de `visit_cities`; la columna original se conserva para compatibilidad.
+- **Migración versionada**: las visitas antiguas con `city_name` se convierten una sola vez en la primera fila de `visit_cities`; la columna original se conserva para compatibilidad. La versión se guarda con `PRAGMA user_version` y una base que ya tenía `visit_cities` se marca como migrada sin volver a hacer el backfill, para no resucitar ciudades borradas.
 - **El código de invitación es permanente en esta versión** y lo ven todos los miembros del grupo. No hay enlace con caducidad.
 - **Rol**: `owner` identifica al creador; en v1 no hay permisos administrativos especiales más allá de la etiqueta.
 - **Sesión**: cookie `HttpOnly`, `SameSite=Lax`, 30 días; el token se guarda hasheado en SQLite.
@@ -363,7 +363,7 @@ npm start
 
 - `npm run build` valida tipos, genera el cliente PWA y los estáticos en `dist/`.
 - `npm start` sirve la API y `dist/` en `http://localhost:3001`.
-- Al arrancar se crea `visit_cities` y se migran automáticamente las ciudades históricas de `visits.city_name`. Haz un backup de la base antes del primer arranque con esta versión.
+- Al arrancar se crea el esquema base y se ejecutan las migraciones pendientes. La conversión de `visits.city_name` a `visit_cities` está versionada y se aplica una única vez. Haz un backup de la base antes del primer arranque con esta versión.
 - El servidor lee `.env` si existe (copia `.env.example`).
 - `SEED_DEMO=false` por defecto: una base nueva arranca vacía. Para ver la demo con el build: `npm run start:demo`.
 - Si la base ya fue sembrada en desarrollo, los usuarios demo siguen existiendo. **Para un despliegue real, usa una base nueva y `SEED_DEMO=false`.**
@@ -424,7 +424,7 @@ npm run typecheck
 npm run build
 ```
 
-`npm test` ejecuta **13 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
+`npm test` ejecuta **15 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
 
 - Haversine con tolerancia;
 - conteo de países/continentes y porcentaje;
@@ -432,7 +432,7 @@ npm run build
 - desempate del ranking;
 - flujo API completo: registro, dos usuarios, grupo, invitación con guion, visitas, duplicado 409, métricas, borrado;
 - ciudades: alta, listado ordenado, duplicado sin distinguir mayúsculas (409), borrado, cascada al quitar el país y autorización del dueño;
-- migración idempotente de `visits.city_name` a `visit_cities`;
+- migración versionada de `visits.city_name` a `visit_cities`, sin restaurar ciudades borradas al reiniciar ni al actualizar una base existente;
 - los kilómetros no cambian al agregar ciudades;
 - construcción de marcadores de ciudad: agrupación por coordenadas, filtrado por miembro y omisión de ciudades sin ubicación;
 - guardia de copy: falla si reaparece una forma de voseo rioplatense en la interfaz o la documentación;
