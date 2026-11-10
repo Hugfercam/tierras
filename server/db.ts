@@ -113,6 +113,22 @@ const migrations: Migration[] = [
       );
     },
   },
+  {
+    version: 5,
+    name: 'trip-visibility',
+    up(db) {
+      const columns = new Set(
+        (db.prepare('PRAGMA table_info(trips)').all() as Array<{ name: string }>).map(
+          (column) => column.name,
+        ),
+      );
+      if (!columns.has('visibility')) {
+        db.exec("ALTER TABLE trips ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'");
+        // Los viajes anteriores eran visibles para el grupo: conservamos su comportamiento.
+        db.exec("UPDATE trips SET visibility = 'group'");
+      }
+    },
+  },
 ];
 
 function migrate(db: Database): void {

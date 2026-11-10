@@ -61,6 +61,7 @@ export function listGroups(db: Database, userId: string): GroupSummary[] {
         (SELECT COUNT(*) FROM memberships mm WHERE mm.group_id = g.id) AS member_count,
         (SELECT COUNT(DISTINCT tc.country_code)
          FROM trip_countries tc
+         JOIN trips t ON t.id = tc.trip_id AND t.visibility = 'group'
          JOIN trip_participants tp ON tp.trip_id = tc.trip_id AND tp.status = 'accepted'
          JOIN memberships mm ON mm.user_id = tp.user_id AND mm.group_id = g.id) AS country_count
        FROM groups g
@@ -156,7 +157,8 @@ export function joinGroup(db: Database, userId: string, rawCode: string): GroupS
         (SELECT COUNT(*) FROM memberships WHERE group_id = ?) AS member_count,
         (SELECT COUNT(DISTINCT tc.country_code)
          FROM trip_countries tc
-         JOIN trip_participants tp ON tp.trip_id = tc.trip_id
+         JOIN trips t ON t.id = tc.trip_id AND t.visibility = 'group'
+         JOIN trip_participants tp ON tp.trip_id = tc.trip_id AND tp.status = 'accepted'
          JOIN memberships mm ON mm.user_id = tp.user_id AND mm.group_id = ?) AS country_count`,
     )
     .get(group.id, group.id) as { member_count: number; country_count: number };
@@ -203,7 +205,7 @@ export function getGroupOverview(
     .all(groupId) as unknown as MemberRow[];
 
   const memberIds = memberRows.map((member) => member.id);
-  const trips = loadTripsForUsers(db, memberIds, userId);
+  const trips = loadTripsForUsers(db, memberIds, userId, 'accepted', 'group');
 
   const members: GroupMember[] = memberRows.map((member) => {
     const memberTrips = trips.filter((trip) =>
@@ -286,6 +288,7 @@ export function createVisit(
   const trip = createTrip(db, userId, {
     startDate: input.visitedAt,
     endDate: input.visitedAt,
+    visibility: 'group',
     stops: [
       {
         countryCode: country.iso2,

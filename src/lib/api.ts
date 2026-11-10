@@ -173,6 +173,7 @@ export function getTrips(signal?: AbortSignal): Promise<{ trips: Trip[] }> {
 
 export interface TripInput {
   title?: string | null;
+  visibility?: 'private' | 'group';
   startDate: string;
   endDate: string;
   stops: Array<{

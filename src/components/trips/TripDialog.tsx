@@ -5,6 +5,7 @@ import type {
   PlaceResult,
   Trip,
   TripParticipantStatus,
+  TripVisibility,
 } from '../../../shared/types.ts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGroup } from '../../contexts/GroupContext';
@@ -87,6 +88,7 @@ export function TripDialog({
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [visibility, setVisibility] = useState<TripVisibility>('private');
   const [stops, setStops] = useState<DraftStop[]>([]);
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +129,7 @@ export function TripDialog({
       setTitle(trip.title);
       setStartDate(trip.startDate);
       setEndDate(trip.endDate);
+      setVisibility(trip.visibility);
       setStops(trip.stops.map(stopFromTrip));
       setParticipantIds(
         trip.participants
@@ -141,6 +144,7 @@ export function TripDialog({
       setTitle('');
       setStartDate('');
       setEndDate('');
+      setVisibility('private');
       setStops(place ? [stopFromPlace(place)] : []);
       setParticipantIds([]);
     }
@@ -196,6 +200,7 @@ export function TripDialog({
         title: title.trim() || null,
         startDate,
         endDate,
+        visibility,
         stops: stops.map((stop) => ({
           countryCode: stop.countryCode,
           cityName: stop.cityName,
@@ -236,7 +241,7 @@ export function TripDialog({
     <Modal
       title={trip ? 'Editar viaje' : 'Nuevo viaje'}
       eyebrow={trip ? 'Actualizar itinerario' : 'Añadir al pasaporte'}
-      description="Un viaje puede incluir varios países y paradas. Las personas participantes también suman estos países a su pasaporte."
+      description="Un viaje puede incluir varios países y paradas. Las personas participantes suman estos países a su pasaporte cuando aceptan la invitación."
       onClose={onClose}
       size="lg"
       footer={
@@ -295,6 +300,38 @@ export function TripDialog({
             </span>
           </div>
         </div>
+
+          <div className="field">
+            <span className="field__label">¿Quién puede verlo?</span>
+            <div className="visibility-picker" role="radiogroup" aria-label="Visibilidad del viaje">
+              <label className={cn('visibility-option', visibility === 'private' && 'is-active')}>
+                <input
+                  type="radio"
+                  name="trip-visibility"
+                  checked={visibility === 'private'}
+                  onChange={() => setVisibility('private')}
+                />
+                <Icon name="lock" size={17} />
+                <span>
+                  <strong>Solo para mí</strong>
+                  <small>No aparece en el mapa ni en el ranking de tus grupos.</small>
+                </span>
+              </label>
+              <label className={cn('visibility-option', visibility === 'group' && 'is-active')}>
+                <input
+                  type="radio"
+                  name="trip-visibility"
+                  checked={visibility === 'group'}
+                  onChange={() => setVisibility('group')}
+                />
+                <Icon name="users" size={17} />
+                <span>
+                  <strong>Visible en grupos</strong>
+                  <small>Solo lo ven las personas de tus grupos.</small>
+                </span>
+              </label>
+            </div>
+          </div>
 
         <div className="field">
           <span className="field__label">Paradas</span>

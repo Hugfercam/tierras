@@ -2,7 +2,7 @@
 
 **Tu pasaporte de viajes, primero; el grupo después.** Una PWA donde cada persona guarda viajes personales o colectivos, con países, paradas y participantes, y luego compara su recorrido con el de sus grupos en un globo 3D.
 
-Primera versión funcional: viajes multipaís, pasaporte personal, participantes que aceptan la invitación antes de sumar al pasaporte y al ranking, globo interactivo, grupos con invitaciones, búsqueda de países y ciudades, y lectura offline.
+Primera versión funcional: viajes multipaís, pasaporte personal, participantes que aceptan la invitación antes de sumar al pasaporte y al ranking, y visibilidad privada o de grupo por viaje, globo interactivo, grupos con invitaciones, búsqueda de países y ciudades, y lectura offline.
 
 ![Mapa compartido de Los Trotamundos](docs/screenshots/map.webp)
 
@@ -159,10 +159,11 @@ Decisiones del modelo:
 - **El pasaporte es personal**: suma todos los viajes en los que participas, pertenezcan o no a un grupo.
 - **Un grupo es una lente comparativa**: muestra las estadísticas de sus miembros calculadas desde sus pasaportes personales. Incluye viajes en solitario y viajes colectivos.
 - **Los participantes aceptan**: el propietario invita a personas de sus grupos; solo cuando aceptan, sus países suman a su pasaporte y al ranking. Pueden rechazar o salir después. Solo el propietario puede editar el viaje.
+- **Visibilidad por viaje**: cada viaje es `private` (por defecto) o `group`. Los privados siguen en el pasaporte personal, pero no aparecen en el mapa ni en el ranking de los grupos.
 - **Varios viajes al mismo país**: un país cuenta una vez para países y kilómetros, pero el historial conserva todos los viajes.
 - **Las paradas son detalle descriptivo**: una ciudad sin coordenadas sigue en el itinerario, pero no se inventa un punto en el globo.
 - **Fechas**: el viaje tiene rango de fechas; las paradas pueden tener fechas opcionales dentro de ese rango.
-- **Migración versionada**: `visits` y `visit_cities` quedan como fuente histórica. La versión 2 crea viajes personales, colapsa marcas duplicadas de la misma persona/país/fecha y conserva las paradas. La versión 3 crea `user_consents` y la 4 añade el estado de consentimiento de los participantes. La versión se guarda con `PRAGMA user_version`.
+- **Migración versionada**: `visits` y `visit_cities` quedan como fuente histórica. La versión 2 crea viajes personales, colapsa marcas duplicadas de la misma persona/país/fecha y conserva las paradas. La versión 3 crea `user_consents`, la 4 añade el estado de consentimiento de los participantes y la 5 añade la visibilidad de los viajes. La versión se guarda con `PRAGMA user_version`.
 - **El código de invitación es permanente en esta versión** y lo ven todos los miembros del grupo. No hay enlace con caducidad.
 - **Rol**: `owner` identifica al creador; el propietario del viaje puede editarlo.
 - **Sesión**: cookie `HttpOnly`, `SameSite=Lax`, 30 días; el token se guarda hasheado en SQLite.
@@ -230,6 +231,7 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 - Los participantes se eligen entre personas que comparten algún grupo con el propietario.
 - El propietario **invita**; el participante debe aceptar. Hasta entonces no suma países ni viajes.
 - **Los países del viaje cuentan para el pasaporte y el ranking de cada participante que acepta.**
+- Cada viaje elige **Solo para mí** o **Visible en grupos**. Los viajes privados no entran en la comparación del grupo.
 - Se permiten varios viajes al mismo país. El historial se conserva y los países distintos no se duplican.
 - La ficha del país muestra cada viaje y sus ciudades; el propietario puede añadir o quitar paradas desde ahí o editar el viaje completo desde el pasaporte.
 - El panel personal permite editar y eliminar viajes. Al eliminar un viaje se recalculan países, kilómetros y ranking.
@@ -353,6 +355,7 @@ Base técnica incluida:
 - **Portabilidad**: exportación JSON desde `/api/account/export` y “Mi cuenta”.
 - **Rectificación**: cambio de nombre y email con contraseña actual.
 - **Supresión**: eliminación de cuenta con contraseña y confirmación; los grupos de los que sea propietario pasan a otra persona o se eliminan si no queda nadie.
+- Visibilidad por viaje: los viajes privados no se muestran a los grupos; los compartidos solo a miembros del grupo.
 - Cookies: solo `tierras_session` (técnica y HttpOnly). Sin analítica, publicidad ni banner de cookies.
 - Caché de API excluye `/api/account` para no guardar exportaciones ni datos de cuenta.
 - La eliminación de cuenta borra sesiones, consentimientos y viajes propios; los viajes compartidos donde solo participaba se desvinculan.
@@ -515,7 +518,7 @@ npm run typecheck
 npm run build
 ```
 
-`npm test` ejecuta **19 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
+`npm test` ejecuta **20 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
 
 - Haversine con tolerancia;
 - conteo de países/continentes y porcentaje;
@@ -524,7 +527,8 @@ npm run build
 - flujo API completo: registro, dos usuarios, grupo, invitación con guion, viajes, métricas y borrado;
 - ciudades: alta, listado ordenado, duplicado sin distinguir mayúsculas (409), borrado, cascada al quitar el país y autorización del dueño;
 - migración versionada de `visits.city_name` a `visit_cities` y de visitas antiguas a viajes;
-- viajes multipaís: países únicos, paradas ordenadas, invitaciones pendientes, aceptación y salida;
+- viajes multipaís: países únicos, paradas ordenadas, invitaciones pendientes, aceptación, salida y visibilidad privada/grupo;
+- visibilidad: un viaje privado no entra en el grupo hasta compartirlo;
 - pasaporte personal sin grupo, con viaje propio;
 - varios viajes al mismo país sin duplicar países ni kilómetros;
 - los kilómetros no cambian al agregar ciudades;
@@ -546,8 +550,8 @@ Verificación PWA realizada en build de producción:
 2. Crear un viaje personal con dos países y paradas; comprobar el pasaporte.
 3. Crear un grupo; copiar el código.
 4. En ventana privada, crear otra cuenta, abrir `/unirse/<código>` y unirse.
-5. Crear un viaje colectivo con paradas y participantes; comprobar que no suman hasta aceptar la invitación y que después aparecen en su pasaporte.
-6. Verificar que el mapa y el ranking del grupo comparan los pasaportes personales, incluidos los viajes en solitario.
+5. Crear un viaje colectivo con paradas y participantes; comprobar que no suman hasta aceptar la invitación, que después aparecen en su pasaporte y que un viaje privado no aparece en el grupo.
+6. Verificar que el mapa y el ranking del grupo solo agregan los viajes marcados como visibles para grupos.
 7. Crear un segundo viaje al mismo país; comprobar que el país no se duplica y que el historial muestra dos viajes.
 8. Editar un viaje y eliminar una parada; comprobar que los km no cambian al quitar una ciudad.
 9. Cerrar la ficha, hacer click en el punto de Bruselas y comprobar la baliza, la bandera, la etiqueta y el acceso a la ficha.
@@ -574,7 +578,7 @@ Estos puntos no estaban especificados y se resolvieron así para esta v1. Son lo
 9. **Sin administración de grupo**: no hay transferencia de propiedad, expulsión, abandono, borrado de grupo ni de cuenta.
 10. **Offline de solo lectura**: las escrituras requieren red; no hay cola de sincronización ni resolución de conflictos.
 11. **Sin notificaciones, chat ni fotos**: intencionalmente fuera de alcance. Cada parada admite una nota de texto, editable desde el viaje.
-12. **Privacidad**: no hay perfiles públicos. Un grupo solo es accesible con sesión y membresía, pero muestra las estadísticas personales de sus miembros, incluidos los viajes realizados en solitario. Hay consentimiento versionado, exportación JSON, rectificación y supresión de cuenta. Los datos de la API cacheada se purgan al cambiar de cuenta.
+12. **Privacidad**: no hay perfiles públicos. Un grupo solo es accesible con sesión y membresía y solo agrega viajes marcados como visibles para grupos; los privados quedan en el pasaporte personal. Hay consentimiento versionado, exportación JSON, rectificación y supresión de cuenta. Los datos de la API cacheada se purgan al cambiar de cuenta.
 13. **Participantes con invitación**: el propietario invita a personas de sus grupos; solo cuentan tras aceptar. Rechazar o salir recalcula sus estadísticas.
 14. **Una sola instancia**: SQLite + proceso único; para escalar habría que migrar a Postgres y almacenamiento de sesiones compartido.
 

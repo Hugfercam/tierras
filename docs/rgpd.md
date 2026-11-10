@@ -23,6 +23,7 @@ Estos valores se configuran en `.env` y se muestran en `/privacidad`, `/terminos
 | Sesión | Token hash, expiración | Mantener sesión | Contrato / seguridad | 30 días |
 | Viajes | Título, fechas, países, paradas, notas, participantes | Diario y estadísticas | Contrato | Hasta borrar viaje o cuenta |
 | Participación | Estado de invitación, fecha y versión aceptada | Consentimiento del participante | Consentimiento | Mientras dure la participación |
+| Visibilidad | `private` o `group` por viaje | Controlar qué se comparte con grupos | Contrato / consentimiento | Hasta cambiar el viaje |
 | Grupos | Nombre, miembros, roles, invitaciones | Comparación social | Contrato | Hasta borrar grupo o cuenta |
 | Consentimientos | Tipo, versión, fecha | Demostrar aceptación | Obligación legal / interés legítimo | Mientras exista la cuenta |
 | Seguridad | Logs técnicos mínimos | Prevención de abuso | Interés legítimo | Según retención del hosting |
@@ -95,7 +96,6 @@ No se usa banner de cookies porque solo hay almacenamiento técnico necesario. S
 
 ## 10. Brechas conocidas
 
-- Los grupos ven estadísticas de viajes individuales; la política lo explica, pero no hay visibilidad por viaje.
 - No hay verificación de email ni rate limiting.
 - El contrato de encargado del tratamiento con el hosting está pendiente de formalizar.
 - Las notas libres podrían contener datos sensibles introducidos por el usuario.
@@ -103,6 +103,7 @@ No se usa banner de cookies porque solo hay almacenamiento técnico necesario. S
 ## 11. Checklist antes de producción
 
 - [x] Consentimiento de participantes: invitación, aceptación, rechazo y salida.
+- [x] Visibilidad por viaje: privado por defecto, compartir con grupos es opcional.
 - [ ] Firmar el contrato de encargado con el hosting.
 - [ ] Completar datos del responsable.
 - [ ] Revisar política, términos y cookies con asesoría legal.
