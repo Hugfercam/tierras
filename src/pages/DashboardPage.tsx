@@ -52,7 +52,14 @@ function stopLabel(trip: Trip): string {
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const { activeGroup, activeGroupId } = useGroup();
+  const {
+    activeGroup,
+    activeGroupId,
+    groups,
+    groupsLoading,
+    openCreateGroup,
+    openJoinGroup,
+  } = useGroup();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const online = useOnlineStatus();
@@ -220,6 +227,31 @@ export function DashboardPage() {
             </Button>
           </div>
         </header>
+
+        {!groupsLoading && groups.length === 0 ? (
+          <section className="personal-group-invite" aria-label="Grupos">
+            <span className="personal-group-invite__icon">
+              <Icon name="users" size={20} />
+            </span>
+            <div className="personal-group-invite__copy">
+              <strong>Tu pasaporte ya funciona sin grupo.</strong>
+              <span>
+                Cuando quieras comparar recorridos, crea un grupo o únete con un código. Tus
+                viajes personales se sumarán a la comparación.
+              </span>
+            </div>
+            <div className="personal-group-invite__actions">
+              <Button onClick={openCreateGroup}>
+                <Icon name="plus" size={16} />
+                Crear grupo
+              </Button>
+              <Button variant="ghost" onClick={openJoinGroup}>
+                <Icon name="link" size={16} />
+                Unirme
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         <section className="stat-grid" aria-label="Tus métricas">
           {stats.map((stat) => (

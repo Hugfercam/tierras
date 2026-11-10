@@ -17,7 +17,7 @@ export function LoginPage() {
   const from =
     state?.from && state.from.startsWith('/') && !state.from.startsWith('//')
       ? state.from
-      : '/mapa';
+      : '/pasaporte';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,7 +97,7 @@ export function LoginPage() {
           Qué bueno <em>verte.</em>
         </h2>
         <p className="auth-form__subtitle">
-          Entra para seguir sumando países con tu grupo.
+          Entra para seguir sumando países a tu pasaporte.
         </p>
 
         <form className="auth-form__fields" onSubmit={handleSubmit} noValidate>

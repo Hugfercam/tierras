@@ -6,9 +6,9 @@ Primera versión funcional: viajes multipaís, pasaporte personal, participantes
 
 ![Mapa compartido de Los Trotamundos](docs/screenshots/map.webp)
 
-| Panel personal | Ranking |
+| Pasaporte personal | Ranking |
 | --- | --- |
-| ![Panel personal](docs/screenshots/dashboard.webp) | ![Ranking del grupo](docs/screenshots/ranking.webp) |
+| ![Pasaporte personal](docs/screenshots/dashboard.webp) | ![Ranking del grupo](docs/screenshots/ranking.webp) |
 
 | Grupo e invitaciones | Vista móvil |
 | --- | --- |
@@ -250,7 +250,12 @@ En móvil la ficha del país sigue siendo una hoja inferior y la baliza conserva
 
 ![Baliza de ciudad en móvil](docs/screenshots/beacon-mobile.webp)
 
-### 3.4 Pasaporte personal
+### 3.4 Pasaporte personal (entrada principal)
+
+- Después de iniciar sesión, la app entra en `/pasaporte`.
+- La raíz `/` también redirige al pasaporte; `/panel` se mantiene como redirección por compatibilidad.
+- La navegación ordena **Pasaporte → Mapa → Ranking → Grupo**.
+- El pasaporte funciona **sin grupo**. Si no hay grupos, muestra un CTA para crear uno o unirse; el mapa, el ranking y la vista de grupo explican que la comparación es opcional y enlazan de vuelta al pasaporte.
 
 Métricas derivadas de **todos los viajes en los que participa el usuario**, pertenezcan o no a un grupo:
 
@@ -287,6 +292,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 ### 3.7 PWA
 
 - Manifest completo con nombre, colores, iconos 192/512/maskable, atajos e `id`.
+- `start_url` en `/pasaporte`; el atajo principal abre el pasaporte y los secundarios el mapa y el ranking.
 - Service worker generado por Workbox:
   - precache del shell, CSS/JS, fuentes, banderas y datos;
   - `NetworkFirst` para GET `/api/*` con timeout de 3 s y cache de hasta 30 días;

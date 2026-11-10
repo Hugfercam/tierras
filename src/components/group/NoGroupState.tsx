@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useGroup } from '../../contexts/GroupContext';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icons';
@@ -17,14 +18,14 @@ export function NoGroupState({ compact = false }: { compact?: boolean }) {
       </div>
       <p className="eyebrow">
         <span className="eyebrow__line" />
-        El primer viaje es armar el grupo
+        Comparar es opcional
       </p>
       <h1>
-        Tu mapa empieza <em>con tu gente.</em>
+        El mapa compartido empieza <em>con tu gente.</em>
       </h1>
       <p className="no-group__lede">
-        Crea un grupo privado o únete con un código. Después cada persona marca sus países y el
-        recorrido se vuelve compartido.
+        Tu pasaporte ya guarda tus viajes en solitario. Crea un grupo privado o únete con un
+        código para comparar recorridos con otras personas.
       </p>
       <div className="no-group__actions">
         <Button size="lg" onClick={openCreateGroup}>
@@ -36,6 +37,10 @@ export function NoGroupState({ compact = false }: { compact?: boolean }) {
           Tengo un código
         </Button>
       </div>
+      <Link className="no-group__passport-link" to="/pasaporte">
+        <Icon name="arrow-left" size={15} />
+        Volver a mi pasaporte
+      </Link>
       <div className="no-group__notes">
         <span>
           <Icon name="lock" size={14} /> Solo entra quien tiene el código

@@ -22,7 +22,7 @@ export function RegisterPage() {
   const from =
     state?.from && state.from.startsWith('/') && !state.from.startsWith('//')
       ? state.from
-      : '/mapa';
+      : '/pasaporte';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -76,7 +76,7 @@ export function RegisterPage() {
           Un mapa para <em>todos.</em>
         </h2>
         <p className="auth-form__subtitle">
-          Crea tu cuenta y después arma el grupo con tu gente.
+          Crea tu cuenta y empieza tu pasaporte. Los grupos vienen después.
         </p>
 
         <form className="auth-form__fields" onSubmit={handleSubmit} noValidate>

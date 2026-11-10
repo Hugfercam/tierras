@@ -3533,6 +3533,21 @@ textarea:focus-visible,
   margin: 25px 0 20px;
 }
 
+.no-group__passport-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  color: var(--muted-strong);
+  font-size: 10px;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.no-group__passport-link:hover {
+  color: var(--paper);
+}
+
 .no-group__notes {
   display: flex;
   flex-wrap: wrap;
@@ -5724,6 +5739,66 @@ textarea:focus-visible,
 
   .podium-card--1 .podium-card__value {
     font-size: 24px;
+  }
+}
+
+.personal-group-invite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(127, 218, 192, 0.16);
+  border-radius: 12px;
+  background: rgba(127, 218, 192, 0.035);
+}
+
+.personal-group-invite__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--mint);
+  background: rgba(127, 218, 192, 0.08);
+}
+
+.personal-group-invite__copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.personal-group-invite__copy strong {
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.personal-group-invite__copy span {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.personal-group-invite__actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .personal-group-invite {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .personal-group-invite__actions {
+    width: 100%;
+    padding-left: 46px;
   }
 }
 
