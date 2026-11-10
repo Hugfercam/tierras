@@ -14,7 +14,7 @@ export function PageLoader({ label = 'Cargando el mapa…' }: { label?: string }
 
 export function PageError({
   title = 'No pudimos cargar esto.',
-  description = 'Revisá tu conexión e intentá de nuevo.',
+  description = 'Revisa tu conexión e intenta de nuevo.',
   onRetry,
 }: {
   title?: string;

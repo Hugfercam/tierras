@@ -136,7 +136,7 @@ function errorHandler(
 
   console.error('[api] error no controlado:', error);
   res.status(500).json({
-    error: 'Algo salió mal de nuestro lado. Intentá de nuevo.',
+    error: 'Algo salió mal de nuestro lado. Intenta de nuevo.',
     code: 'INTERNAL_ERROR',
   });
 }

@@ -31,7 +31,7 @@ export function InvitePage() {
     return (
       <PageError
         title="No pudimos leer la invitación."
-        description="Revisá tu conexión y volvé a intentarlo."
+        description="Revisa tu conexión y vuelve a intentarlo."
       />
     );
   }
@@ -46,19 +46,19 @@ export function InvitePage() {
       addGroupLocally(result.group);
       setActiveGroupId(result.group.id);
       await refreshGroups();
-      toast(`Ya sos parte de “${result.group.name}”.`, 'success');
+      toast(`Ya eres parte de “${result.group.name}”.`, 'success');
       navigate('/grupo');
     } catch (caught) {
       if (caught instanceof ApiError) {
         if (caught.code === 'ALREADY_MEMBER') {
           await refreshGroups();
-          toast('Ya formás parte de este grupo.', 'info');
+          toast('Ya formas parte de este grupo.', 'info');
           navigate('/grupo');
           return;
         }
         setError(caught.message);
       } else {
-        setError('No pudimos unirte al grupo. Intentá de nuevo.');
+        setError('No pudimos unirte al grupo. Intenta de nuevo.');
       }
     } finally {
       setJoining(false);
@@ -85,7 +85,7 @@ export function InvitePage() {
         </h1>
         <p className="invite-accept__lede">
           {existing
-            ? `Ya sos parte de ${existing.name}. Podés abrir el mapa o ver a tu gente.`
+            ? `Ya eres parte de ${existing.name}. Puedes abrir el mapa o ver a tu gente.`
             : 'Al entrar vas a poder ver todos los países del grupo y sumar los tuyos. Solo se accede con este código.'}
         </p>
         <div className="invite-accept__code">
@@ -136,7 +136,7 @@ export function InvitePage() {
         </div>
         {!online && !existing ? (
           <p className="form-note form-note--warn">
-            Sin conexión. Para unirte a un grupo necesitás estar online.
+            Sin conexión. Para unirte a un grupo necesitas estar online.
           </p>
         ) : null}
       </section>

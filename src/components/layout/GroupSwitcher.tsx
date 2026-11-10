@@ -66,7 +66,7 @@ export function GroupSwitcher() {
               ))}
             </div>
           ) : (
-            <p className="group-switcher__empty">Todavía no tenés ningún grupo.</p>
+            <p className="group-switcher__empty">Todavía no tienes ningún grupo.</p>
           )}
           <div className="popover__divider" />
           <button

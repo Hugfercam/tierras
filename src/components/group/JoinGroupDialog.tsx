@@ -33,7 +33,7 @@ export function JoinGroupDialog({ open, onClose, onJoined }: JoinGroupDialogProp
     event.preventDefault();
     const cleanCode = extractInviteCode(code);
     if (cleanCode.length < 4) {
-      setError('Ingresá el código que te compartieron.');
+      setError('Introduce el código que te compartieron.');
       return;
     }
     setLoading(true);
@@ -45,7 +45,7 @@ export function JoinGroupDialog({ open, onClose, onJoined }: JoinGroupDialogProp
       if (caught instanceof ApiError) {
         setError(caught.message);
       } else {
-        setError('No pudimos unirnos al grupo. Intentá de nuevo.');
+        setError('No pudimos unirnos al grupo. Intenta de nuevo.');
       }
     } finally {
       setLoading(false);
@@ -56,7 +56,7 @@ export function JoinGroupDialog({ open, onClose, onJoined }: JoinGroupDialogProp
     <Modal
       title="Unirme a un grupo"
       eyebrow="Ya tengo una invitación"
-      description="Pegá el código o el enlace que te compartieron."
+      description="Pega el código o el enlace que te compartieron."
       onClose={onClose}
       size="sm"
       footer={

@@ -22,9 +22,9 @@ import { HttpError, parseWith } from '../errors.ts';
 const emailSchema = z
   .string()
   .trim()
-  .min(1, 'Ingresá tu email.')
+  .min(1, 'Introduce tu email.')
   .max(160, 'El email es demasiado largo.')
-  .email('Ingresá un email válido.')
+  .email('Introduce un email válido.')
   .transform((value) => value.toLowerCase());
 
 const passwordSchema = z
@@ -33,19 +33,19 @@ const passwordSchema = z
   .max(128, 'La contraseña es demasiado larga.');
 
 const registerSchema = z.object({
-  name: z.string().trim().min(2, 'Ingresá tu nombre.').max(60, 'Máximo 60 caracteres.'),
+  name: z.string().trim().min(2, 'Introduce tu nombre.').max(60, 'Máximo 60 caracteres.'),
   email: emailSchema,
   password: passwordSchema,
   homeCountryCode: z
     .string()
     .trim()
     .toUpperCase()
-    .refine(isCountryCode, 'Elegí un país de residencia válido.'),
+    .refine(isCountryCode, 'Elige un país de residencia válido.'),
 });
 
 const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, 'Ingresá tu contraseña.').max(128),
+  password: z.string().min(1, 'Introduce tu contraseña.').max(128),
 });
 
 interface UserRow {

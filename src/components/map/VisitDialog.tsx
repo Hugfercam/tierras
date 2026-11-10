@@ -50,7 +50,7 @@ export function VisitDialog({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!selected) {
-      setError('Elegí un país o una ciudad.');
+      setError('Elige un país o una ciudad.');
       return;
     }
     setSaving(true);
@@ -75,11 +75,11 @@ export function VisitDialog({
       if (caught instanceof ApiError) {
         setError(
           caught.code === 'ALREADY_VISITED'
-            ? 'Ya marcaste este país en este grupo. Podés quitarlo desde la ficha del país.'
+            ? 'Ya marcaste este país en este grupo. Puedes quitarlo desde la ficha del país.'
             : caught.message,
         );
       } else {
-        setError('No pudimos guardar la visita. Intentá de nuevo.');
+        setError('No pudimos guardar la visita. Intenta de nuevo.');
       }
     } finally {
       setSaving(false);
@@ -141,7 +141,7 @@ export function VisitDialog({
             />
           )}
           <span className="field__hint">
-            Si elegís una ciudad, se usa como punto para estimar los kilómetros.
+            Si eliges una ciudad, se usa como punto para estimar los kilómetros.
           </span>
         </div>
 
@@ -172,7 +172,7 @@ export function VisitDialog({
 
         {!online ? (
           <p className="form-note form-note--warn">
-            Sin conexión. Para guardar una visita necesitás volver a estar online.
+            Sin conexión. Para guardar una visita necesitas volver a estar online.
           </p>
         ) : (
           <p className="form-note">

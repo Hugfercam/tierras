@@ -58,7 +58,7 @@ export function RegisterPage() {
         setError(caught.message);
         setFieldErrors(caught.fieldErrors ?? {});
       } else {
-        setError('No pudimos crear tu cuenta. Intentá de nuevo.');
+        setError('No pudimos crear tu cuenta. Intenta de nuevo.');
       }
     } finally {
       setSubmitting(false);
@@ -70,13 +70,13 @@ export function RegisterPage() {
       <div className="auth-form auth-form--register">
         <p className="eyebrow">
           <span className="eyebrow__line" />
-          Empezá tu atlas
+          Empieza tu atlas
         </p>
         <h2 className="auth-form__title">
           Un mapa para <em>todos.</em>
         </h2>
         <p className="auth-form__subtitle">
-          Creá tu cuenta y después armá el grupo con tu gente.
+          Crea tu cuenta y después arma el grupo con tu gente.
         </p>
 
         <form className="auth-form__fields" onSubmit={handleSubmit} noValidate>
@@ -107,7 +107,7 @@ export function RegisterPage() {
                 className="input"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="vos@ejemplo.com"
+                placeholder="tu@ejemplo.com"
                 autoComplete="email"
                 required
               />
@@ -143,7 +143,7 @@ export function RegisterPage() {
           </label>
 
           <label className="field">
-            <span className="field__label">País donde vivís</span>
+            <span className="field__label">País donde vives</span>
             <span className="input-wrap">
               <Icon name="globe" size={18} className="input-wrap__icon" />
               <select
@@ -152,7 +152,7 @@ export function RegisterPage() {
                 onChange={(event) => setHomeCountryCode(event.target.value)}
                 required
               >
-                <option value="">Elegí tu país base</option>
+                <option value="">Elige tu país base</option>
                 {REGION_ORDER.map((region) => (
                   <optgroup key={region} label={REGION_LABELS[region]}>
                     {COUNTRIES.filter((country) => country.region === region).map((country) => (
@@ -188,7 +188,7 @@ export function RegisterPage() {
         </form>
 
         <p className="auth-switch">
-          ¿Ya tenés una cuenta?{' '}
+          ¿Ya tienes una cuenta?{' '}
           <Link to="/login" state={{ from }}>
             Iniciar sesión
           </Link>

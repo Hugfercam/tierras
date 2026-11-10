@@ -150,7 +150,7 @@ export function GlobeView({
         <div className="globe__failed">
           <Icon name="globe" size={32} />
           <p>Tu navegador no pudo iniciar la vista 3D.</p>
-          <span>Probá con un navegador actualizado o activá la aceleración por hardware.</span>
+          <span>Prueba con un navegador actualizado o activa la aceleración por hardware.</span>
         </div>
       ) : null}
 
@@ -222,10 +222,10 @@ export function GlobeView({
       </div>
 
       <p className="globe__hint">
-        Arrastrá para girar <span>·</span> Pellizcá o usá la rueda para acercar
+        Arrastra para girar <span>·</span> Usa dos dedos o la rueda para acercar
       </p>
       <p className="sr-only">
-        Globo terráqueo interactivo con los países visitados por el grupo. También podés usar el
+        Globo terráqueo interactivo con los países visitados por el grupo. También puedes usar el
         buscador para ubicar un país o una ciudad.
       </p>
     </div>

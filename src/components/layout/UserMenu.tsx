@@ -32,7 +32,7 @@ export function UserMenu() {
       toast(
         error instanceof ApiError
           ? error.message
-          : 'No pudimos cerrar la sesión. Intentá de nuevo.',
+          : 'No pudimos cerrar la sesión. Intenta de nuevo.',
         'error',
       );
     } finally {

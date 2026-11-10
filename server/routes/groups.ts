@@ -18,7 +18,7 @@ import { normalizeInviteCode } from '../invite.ts';
 const groupNameSchema = z
   .string()
   .trim()
-  .min(2, 'Poné un nombre de al menos 2 caracteres.')
+  .min(2, 'Pon un nombre de al menos 2 caracteres.')
   .max(60, 'Máximo 60 caracteres.');
 
 const createGroupSchema = z.object({
@@ -29,7 +29,7 @@ const joinGroupSchema = z.object({
   inviteCode: z
     .string()
     .trim()
-    .min(4, 'Ingresá el código de invitación.')
+    .min(4, 'Introduce el código de invitación.')
     .max(14, 'El código es demasiado largo.')
     .transform(normalizeInviteCode),
 });
@@ -39,13 +39,13 @@ const latestAllowedDate = () =>
 
 const dateSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Usá una fecha con formato AAAA-MM-DD.')
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Usa una fecha con formato AAAA-MM-DD.')
   .refine((value) => {
     const date = new Date(`${value}T00:00:00.000Z`);
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
   }, 'Esa fecha no existe.')
   .refine((value) => value >= '1950-01-01', 'La fecha no puede ser anterior a 1950.')
-  .refine((value) => value <= latestAllowedDate(), 'Todavía no podés marcar una fecha futura.');
+  .refine((value) => value <= latestAllowedDate(), 'Todavía no puedes marcar una fecha futura.');
 
 const createVisitSchema = z
   .object({
@@ -70,7 +70,7 @@ const addVisitCitySchema = z
     name: z
       .string()
       .trim()
-      .min(1, 'Ingresá el nombre de la ciudad.')
+      .min(1, 'Introduce el nombre de la ciudad.')
       .max(80, 'Máximo 80 caracteres.'),
     lat: z.number().min(-90).max(90).optional(),
     lng: z.number().min(-180).max(180).optional(),
