@@ -10,13 +10,13 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Tierras — mapa de viajes compartido',
+        name: 'Tierras — pasaporte de viajes',
         short_name: 'Tierras',
         description:
-          'El mapa de viajes privado de tu grupo: marca países, mira el globo y compara sus recorridos.',
+          'Tu pasaporte personal de viajes: países, paradas y recuerdos. Compara con tus grupos cuando quieras.',
         lang: 'es',
         dir: 'ltr',
-        start_url: '/',
+        start_url: '/pasaporte',
         scope: '/',
         display: 'standalone',
         display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
@@ -46,10 +46,16 @@ export default defineConfig({
         ],
         shortcuts: [
           {
+            name: 'Abrir mi pasaporte',
+            short_name: 'Pasaporte',
+            url: '/pasaporte',
+            description: 'Ver tus viajes, países y recuerdos',
+          },
+          {
             name: 'Abrir el mapa',
             short_name: 'Mapa',
             url: '/mapa',
-            description: 'Ver el globo compartido del grupo',
+            description: 'Ver el globo comparado del grupo',
           },
           {
             name: 'Ver el ranking',

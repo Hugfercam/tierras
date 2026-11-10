@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { PlaceResult, Visit } from '../../shared/types.ts';
+import type { GroupOverview, PlaceResult, Visit } from '../../shared/types.ts';
 import { countryName } from '../../shared/countries.ts';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
 import { useToast } from '../contexts/ToastContext';
 import { useOnlineStatus } from '../hooks/useUi';
-import { ApiError, removeVisit } from '../lib/api';
+import { ApiError, getPersonalOverview, removeVisit } from '../lib/api';
 import { buildCityMarkers, type CityMarker } from '../lib/cityMarkers';
+import { cn } from '../lib/cn';
 import { countryToPlace } from '../lib/places';
 import { formatInteger, formatKm } from '../lib/format';
 import { CountryDialog } from '../components/map/CountryDialog';
@@ -16,7 +17,6 @@ import { GlobeView } from '../components/map/GlobeView';
 import { MapSidebar } from '../components/map/MapSidebar';
 import { PlaceSearch } from '../components/map/PlaceSearch';
 import { TripDialog } from '../components/trips/TripDialog';
-import { NoGroupState } from '../components/group/NoGroupState';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { CountryFlag } from '../components/ui/CountryFlag';
@@ -35,6 +35,7 @@ export function MapPage() {
     overviewLoading,
     overviewError,
     refetchOverview,
+    openCreateGroup,
   } = useGroup();
   const online = useOnlineStatus();
   const { toast } = useToast();
@@ -52,9 +53,55 @@ export function MapPage() {
   const [showCities, setShowCities] = useState(true);
   const [selectedCity, setSelectedCity] = useState<CityMarker | null>(null);
   const processedCountryParam = useRef<string | null>(null);
+  const scope =
+    searchParams.get('vista') === 'grupo' && activeGroup ? 'group' : 'personal';
+  const currentUserId = user?.id ?? '';
+
+  const personalQuery = useQuery({
+    queryKey: ['personal', 'overview'],
+    queryFn: ({ signal }) => getPersonalOverview(signal),
+    enabled: Boolean(user),
+  });
+
+  const personalOverview = useMemo<GroupOverview | null>(() => {
+    if (!personalQuery.data || !user) return null;
+    const personal = personalQuery.data;
+    return {
+      group: {
+        id: 'personal',
+        name: 'Mi pasaporte',
+        ownerId: user.id,
+        inviteCode: '',
+        createdAt: user.createdAt,
+      },
+      me: { role: 'owner' },
+      members: [
+        {
+          id: user.id,
+          name: user.name,
+          homeCountryCode: user.homeCountryCode,
+          role: 'owner',
+          joinedAt: user.createdAt,
+          stats: personal.stats,
+        },
+      ],
+      visits: personal.visits,
+      stats: {
+        countries: personal.stats.countries,
+        kilometers: personal.stats.kilometers,
+        continents: personal.stats.continents,
+        visits: personal.visits.length,
+        trips: personal.stats.trips,
+      },
+    };
+  }, [personalQuery.data, user]);
+
+  const effectiveOverview = scope === 'personal' ? personalOverview : overview;
+  const effectiveLayer = scope === 'personal' ? currentUserId : layer;
   const cityMarkers = useMemo(
-    () => (overview ? buildCityMarkers(overview, layer) : []),
-    [layer, overview],
+    () =>
+      effectiveOverview ? buildCityMarkers(effectiveOverview, effectiveLayer) : [],
+    [effectiveLayer, effectiveOverview],
   );
 
   useEffect(() => {
@@ -70,6 +117,15 @@ export function MapPage() {
   }, [activeGroupId]);
 
   useEffect(() => {
+    setSelectedCity(null);
+    setSelectedCountry(null);
+    setCountryOpen(false);
+    setSpotlight(null);
+    setFocusTarget(null);
+    setPendingRemove(null);
+  }, [scope]);
+
+  useEffect(() => {
     if (!selectedCity) return;
     if (!cityMarkers.some((marker) => marker.id === selectedCity.id)) {
       setSelectedCity(null);
@@ -78,8 +134,8 @@ export function MapPage() {
 
   useEffect(() => {
     const iso2 = searchParams.get('pais');
-    if (!overview || !iso2) return;
-    const key = `${activeGroupId}:${iso2}`;
+    if (!effectiveOverview || !iso2) return;
+    const key = `${scope}:${activeGroupId}:${iso2}`;
     if (processedCountryParam.current === key) return;
     const place = countryToPlace(iso2);
     if (!place) return;
@@ -89,38 +145,61 @@ export function MapPage() {
     setSpotlight(place);
     setFocusTarget({ lat: place.lat, lng: place.lng, key: Date.now() });
     setCountryOpen(false);
-    setSearchParams({}, { replace: true });
-  }, [activeGroupId, overview, searchParams, setSearchParams]);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('pais');
+      return next;
+    }, { replace: true });
+  }, [
+    activeGroupId,
+    effectiveOverview,
+    scope,
+    searchParams,
+    setSearchParams,
+  ]);
 
-  if (groupsLoading) return <PageLoader label="Buscando tus grupos…" />;
-  if (groupsError) {
-    return (
-      <PageError
-        title="No pudimos cargar tus grupos."
-        description="Puede que estés sin conexión. Prueba de nuevo."
-      />
-    );
-  }
-  if (!activeGroup) {
-    return (
-      <div className="standalone-page">
-        <NoGroupState />
-      </div>
-    );
-  }
-  if (overviewLoading && !overview) return <PageLoader label="Armando el mapa del grupo…" />;
-  if (overviewError || !overview) {
-    return (
-      <PageError
-        title="No pudimos abrir este mapa."
-        description="Revisa tu conexión o intenta recargar los datos del grupo."
-        onRetry={refetchOverview}
-      />
-    );
+  if (scope === 'personal') {
+    if (personalQuery.isLoading && !personalOverview) {
+      return <PageLoader label="Abriendo tu mapa personal…" />;
+    }
+    if (personalQuery.isError || !personalOverview) {
+      return (
+        <PageError
+          title="No pudimos abrir tu mapa personal."
+          description="Revisa tu conexión o recarga tus viajes."
+          onRetry={() => {
+            void personalQuery.refetch();
+          }}
+        />
+      );
+    }
+  } else {
+    if (groupsLoading || (overviewLoading && !overview)) {
+      return <PageLoader label="Armando el mapa del grupo…" />;
+    }
+    if (groupsError) {
+      return (
+        <PageError
+          title="No pudimos cargar tus grupos."
+          description="Puede que estés sin conexión. Prueba de nuevo."
+        />
+      );
+    }
+    if (overviewError || !overview) {
+      return (
+        <PageError
+          title="No pudimos abrir este mapa."
+          description="Revisa tu conexión o intenta recargar los datos del grupo."
+          onRetry={refetchOverview}
+        />
+      );
+    }
   }
 
-  const currentUserId = user?.id ?? '';
-  const selectedMember = overview.members.find((member) => member.id === layer) ?? null;
+  if (!effectiveOverview) return <PageLoader label="Preparando el mapa…" />;
+
+  const personalMode = scope === 'personal';
+  const effectiveGroupName = personalMode ? 'Mi pasaporte' : activeGroup?.name ?? 'Grupo';
 
   const handleCitySelect = (city: CityMarker | null) => {
     if (!city) {
@@ -174,6 +253,24 @@ export function MapPage() {
     setSelectedCountry(null);
   };
 
+  const handleScopeChange = (nextScope: 'personal' | 'group') => {
+    if (nextScope === 'group' && !activeGroup) {
+      openCreateGroup();
+      return;
+    }
+    setSelectedCity(null);
+    setSelectedCountry(null);
+    setCountryOpen(false);
+    setSpotlight(null);
+    setFocusTarget(null);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextScope === 'group') next.set('vista', 'grupo');
+      else next.delete('vista');
+      return next;
+    });
+  };
+
   const handleToggleCities = () => {
     setShowCities((current) => !current);
     setSelectedCity(null);
@@ -221,9 +318,9 @@ export function MapPage() {
       <div className="map-page">
         <div className="map-stage">
           <GlobeView
-            visits={overview.visits}
-            members={overview.members}
-            layer={layer}
+            visits={effectiveOverview.visits}
+            members={effectiveOverview.members}
+            layer={effectiveLayer}
             selectedCountry={selectedCountry}
             focusTarget={focusTarget}
             cityMarkers={cityMarkers}
@@ -272,59 +369,94 @@ export function MapPage() {
           <div className="map-titles">
             <p className="eyebrow eyebrow--light">
               <span className="eyebrow__line" />
-              Mapa compartido
+              {personalMode ? 'Mapa personal' : 'Mapa compartido'}
             </p>
-            <h1>{activeGroup.name}</h1>
+            <h1>{personalMode ? 'Tu mapa' : activeGroup?.name}</h1>
             <div className="map-titles__meta">
               <span>
-                <Icon name="globe" size={14} /> {formatInteger(overview.stats.countries)} países
+                <Icon name="globe" size={14} />{' '}
+                {formatInteger(effectiveOverview.stats.countries)} países
               </span>
+              {personalMode ? (
+                <span>
+                  <Icon name="route" size={14} />{' '}
+                  {formatInteger(effectiveOverview.stats.trips ?? 0)} viajes
+                </span>
+              ) : (
+                <span>
+                  <Icon name="users" size={14} />{' '}
+                  {formatInteger(effectiveOverview.members.length)} viajeros
+                </span>
+              )}
               <span>
-                <Icon name="users" size={14} /> {formatInteger(overview.members.length)} viajeros
-              </span>
-              <span>
-                <Icon name="route" size={14} /> {formatKm(overview.stats.kilometers)}
+                <Icon name="route" size={14} />{' '}
+                {formatKm(effectiveOverview.stats.kilometers)}
               </span>
             </div>
           </div>
 
-          <div className="map-viewing">
-            <span className="map-viewing__dot" />
-            {selectedMember ? `Viendo a ${selectedMember.name.split(' ')[0]}` : 'Viendo todo el grupo'}
+          <div className="map-scope" role="tablist" aria-label="Vista del mapa">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={personalMode}
+              className={cn('map-scope__option', personalMode && 'is-active')}
+              onClick={() => handleScopeChange('personal')}
+            >
+              <Icon name="grid" size={14} />
+              Mi pasaporte
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!personalMode}
+              className={cn('map-scope__option', !personalMode && 'is-active')}
+              title={activeGroup ? activeGroup.name : 'Crea un grupo para comparar'}
+              onClick={() => handleScopeChange('group')}
+            >
+              <Icon name="users" size={14} />
+              <span>{activeGroup?.name ?? 'Sin grupo'}</span>
+            </button>
           </div>
 
           <div className="map-note">
             <Icon name="info" size={14} />
-            <span>Toca un país para ver quién estuvo</span>
+            <span>
+              {personalMode
+                ? 'Toca un país para ver tus viajes'
+                : 'Toca un país para ver quién estuvo'}
+            </span>
           </div>
         </div>
 
         <MapSidebar
-          overview={overview}
-          layer={layer}
+          overview={effectiveOverview}
+          layer={effectiveLayer}
           onLayerChange={handleLayerChange}
           currentUserId={currentUserId}
           onMarkCountry={() => {
             setVisitInitial(null);
             setVisitOpen(true);
           }}
-          groupName={activeGroup.name}
+          groupName={effectiveGroupName}
           showCities={showCities}
           cityCount={cityMarkers.length}
           onToggleCities={handleToggleCities}
+          personalMode={personalMode}
         />
       </div>
 
       {selectedCountry && countryOpen ? (
         <CountryDialog
-          groupId={activeGroup.id}
+          groupId={personalMode ? '' : activeGroup?.id ?? ''}
           countryCode={selectedCountry}
           spotlight={spotlight}
-          visits={overview.visits}
-          members={overview.members}
+          visits={effectiveOverview.visits}
+          members={effectiveOverview.members}
           currentUserId={currentUserId}
-          groupName={activeGroup.name}
+          groupName={effectiveGroupName}
           online={online}
+          personalMode={personalMode}
           onClose={() => setCountryOpen(false)}
           onMark={handleMarkCountry}
           onRemove={(visit) => setPendingRemove(visit)}

@@ -17,6 +17,7 @@ interface MapSidebarProps {
   showCities: boolean;
   cityCount: number;
   onToggleCities: () => void;
+  personalMode?: boolean;
 }
 
 export function MapSidebar({
@@ -29,6 +30,7 @@ export function MapSidebar({
   showCities,
   cityCount,
   onToggleCities,
+  personalMode = false,
 }: MapSidebarProps) {
   const selectedMember = overview.members.find((member) => member.id === layer) ?? null;
   const memberVisits = (memberId: string) =>
@@ -39,13 +41,15 @@ export function MapSidebar({
       <div className="map-sidebar__intro">
         <p className="eyebrow">
           <span className="eyebrow__line" />
-          Vista del grupo
+          {personalMode ? 'Mi pasaporte' : 'Vista del grupo'}
         </p>
         <h2>{groupName}</h2>
         <p>
-          {selectedMember
-            ? `Estás viendo el recorrido de ${selectedMember.name}.`
-            : 'Estás viendo todos los países que el grupo ya marcó.'}
+          {personalMode
+            ? 'Estos son todos los países de tus viajes, en solitario o en grupo.'
+            : selectedMember
+              ? `Estás viendo el recorrido de ${selectedMember.name}.`
+              : 'Estás viendo todos los países que el grupo ya marcó.'}
         </p>
         <Button full onClick={onMarkCountry}>
           <Icon name="plus" size={19} />
@@ -55,47 +59,58 @@ export function MapSidebar({
 
       <section className="map-panel">
         <div className="map-panel__head">
-          <h3>Capas del mapa</h3>
-          <span>{formatInteger(overview.members.length)} viajeros</span>
+          <h3>{personalMode ? 'Tu mapa' : 'Capas del mapa'}</h3>
+          <span>
+            {personalMode ? 'Solo tú' : `${formatInteger(overview.members.length)} viajeros`}
+          </span>
         </div>
 
-        <div className="layer-list" role="radiogroup" aria-label="Capa del mapa">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={layer === 'group'}
-            className={cn('layer-option', layer === 'group' && 'is-active')}
-            onClick={() => onLayerChange('group')}
-          >
-            <span className="layer-option__swatch layer-option__swatch--group" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <span />
-            </span>
-            <span className="layer-option__copy">
-              <strong>Todo el grupo</strong>
-              <small>
-                {formatInteger(overview.stats.countries)} países · color por coincidencia
-              </small>
-            </span>
-            <span className="layer-option__radio" aria-hidden="true">
-              {layer === 'group' ? <span /> : null}
-            </span>
-          </button>
+        {personalMode ? (
+          <p className="map-panel__personal-note">
+            <Icon name="user" size={14} /> Este mapa muestra los países de tu pasaporte.
+          </p>
+        ) : (
+          <div className="layer-list" role="radiogroup" aria-label="Capa del mapa">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={layer === 'group'}
+              className={cn('layer-option', layer === 'group' && 'is-active')}
+              onClick={() => onLayerChange('group')}
+            >
+              <span
+                className="layer-option__swatch layer-option__swatch--group"
+                aria-hidden="true"
+              >
+                <span />
+                <span />
+                <span />
+                <span />
+              </span>
+              <span className="layer-option__copy">
+                <strong>Todo el grupo</strong>
+                <small>
+                  {formatInteger(overview.stats.countries)} países · color por coincidencia
+                </small>
+              </span>
+              <span className="layer-option__radio" aria-hidden="true">
+                {layer === 'group' ? <span /> : null}
+              </span>
+            </button>
 
-          {overview.members.map((member, index) => (
-            <MemberLayer
-              key={member.id}
-              member={member}
-              index={index}
-              count={memberVisits(member.id)}
-              active={layer === member.id}
-              isMe={member.id === currentUserId}
-              onClick={() => onLayerChange(member.id)}
-            />
-          ))}
-        </div>
+            {overview.members.map((member, index) => (
+              <MemberLayer
+                key={member.id}
+                member={member}
+                index={index}
+                count={memberVisits(member.id)}
+                active={layer === member.id}
+                isMe={member.id === currentUserId}
+                onClick={() => onLayerChange(member.id)}
+              />
+            ))}
+          </div>
+        )}
 
         <button
           type="button"
@@ -121,7 +136,7 @@ export function MapSidebar({
 
       <section className="map-panel map-panel--stats">
         <div className="map-panel__head">
-          <h3>El grupo en números</h3>
+          <h3>{personalMode ? 'Tu pasaporte en números' : 'El grupo en números'}</h3>
           <span>En este mapa</span>
         </div>
         <div className="mini-stats">
@@ -140,17 +155,37 @@ export function MapSidebar({
           <div>
             <strong>{formatKm(overview.stats.kilometers)}</strong>
             <span>km estimados</span>
-            <InfoTip text="Es la suma de los kilómetros estimados de cada miembro. Se calculan uniendo sus puntos de visita en orden de fecha, partiendo de su punto en el país base." />
+            <InfoTip
+              text={
+                personalMode
+                  ? 'Se calculan con los países distintos de tu pasaporte, usando el primer viaje de cada país desde tu punto en el país base.'
+                  : 'Es la suma de los kilómetros estimados de cada miembro. Se calculan uniendo sus puntos de visita en orden de fecha, partiendo de su punto en el país base.'
+              }
+            />
           </div>
         </div>
       </section>
 
       <section className="map-legend">
         <div className="map-legend__head">
-          <Icon name={selectedMember ? 'route' : 'globe'} size={17} />
-          <h3>{selectedMember ? `Países de ${selectedMember.name.split(' ')[0]}` : 'Cómo leer el color'}</h3>
+          <Icon name={personalMode || selectedMember ? 'route' : 'globe'} size={17} />
+          <h3>
+            {personalMode
+              ? 'Tu recorrido'
+              : selectedMember
+                ? `Países de ${selectedMember.name.split(' ')[0]}`
+                : 'Cómo leer el color'}
+          </h3>
         </div>
-        {selectedMember ? (
+        {personalMode ? (
+          <div className="map-legend__member">
+            <span className="map-legend__member-dot" style={{ backgroundColor: 'var(--coral)' }} />
+            <p>
+              {formatInteger(overview.stats.countries)} países en tu pasaporte ·{' '}
+              {formatInteger(overview.stats.trips ?? 0)} viajes.
+            </p>
+          </div>
+        ) : selectedMember ? (
           <div className="map-legend__member">
             <span
               className="map-legend__member-dot"

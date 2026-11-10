@@ -9,7 +9,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div className="auth-visual__grain" aria-hidden="true" />
         <div className="auth-visual__top">
           <Brand />
-          <span className="auth-visual__tag">Mapa de viajes compartido</span>
+          <span className="auth-visual__tag">Pasaporte de viajes</span>
         </div>
 
         <div className="auth-orb" aria-hidden="true">
@@ -50,24 +50,24 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div className="auth-visual__copy">
           <p className="eyebrow eyebrow--light">
             <span className="eyebrow__line" />
-            Un atlas privado
+            Tu pasaporte personal
           </p>
           <h1>
-            El mundo se recuerda mejor <em>en compañía.</em>
+            El mundo se recuerda mejor <em>a tu manera.</em>
           </h1>
           <p className="auth-visual__lede">
-            Un solo mapa para el grupo: cada persona marca sus países y todos ven el recorrido
-            que van construyendo juntos.
+            Guarda países, paradas y recuerdos en tu pasaporte personal. Cuando quieras,
+            compártelos con tus grupos para comparar recorridos.
           </p>
           <div className="auth-visual__meta">
             <span>
-              <Icon name="lock" size={14} /> Grupos cerrados
+              <Icon name="grid" size={14} /> Pasaporte personal
             </span>
             <span>
               <Icon name="globe" size={14} /> Globo 3D
             </span>
             <span>
-              <Icon name="route" size={14} /> Kilómetros estimados
+              <Icon name="users" size={14} /> Grupos opcionales
             </span>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           </div>
           {children}
           <p className="auth-panel__foot">
-            Tierras · Hecho para viajar juntos <span aria-hidden="true">✦</span>
+            Tierras · Tus viajes, en compañía <span aria-hidden="true">✦</span>
           </p>
         </div>
       </section>

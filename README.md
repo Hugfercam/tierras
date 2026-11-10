@@ -6,9 +6,9 @@ Primera versión funcional: viajes multipaís, pasaporte personal, participantes
 
 ![Mapa compartido de Los Trotamundos](docs/screenshots/map.webp)
 
-| Panel personal | Ranking |
+| Pasaporte personal | Ranking |
 | --- | --- |
-| ![Panel personal](docs/screenshots/dashboard.webp) | ![Ranking del grupo](docs/screenshots/ranking.webp) |
+| ![Pasaporte personal](docs/screenshots/dashboard.webp) | ![Ranking del grupo](docs/screenshots/ranking.webp) |
 
 | Grupo e invitaciones | Vista móvil |
 | --- | --- |
@@ -193,6 +193,10 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 
 ### 3.1 Mapa 3D
 
+- Selector **Mi pasaporte / Grupo** en la esquina superior izquierda.
+- **Mi pasaporte** es la vista por defecto: muestra todos los países de tus viajes, sin necesidad de grupo.
+- **Grupo** compara los países de los miembros y se abre con `?vista=grupo` desde el grupo.
+- Si no hay grupo, el selector ofrece crearlo; el mapa personal sigue funcionando.
 - Esfera de Three.js con cámara `PerspectiveCamera` y `OrbitControls` (arrastre, rueda/pellizco, auto-rotación pausable).
 - La textura se genera a 3072×1536 px (2048 en pantallas pequeñas) con:
   - océano y retícula;
@@ -204,6 +208,8 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 - Búsqueda: anima la cámara al punto, deja un marcador pulsante y resalta el país.
 - Atmósfera con shader, estrellas, anillo orbital decorativo y luces suaves.
 - Si WebGL falla, se muestra un estado de error explicativo. No se incluye una segunda proyección porque la vista 3D es la implementación principal de esta versión.
+
+![Mapa personal con selector de grupo](docs/screenshots/map-personal.webp)
 
 ### 3.2 Grupos e invitaciones
 
@@ -250,7 +256,12 @@ En móvil la ficha del país sigue siendo una hoja inferior y la baliza conserva
 
 ![Baliza de ciudad en móvil](docs/screenshots/beacon-mobile.webp)
 
-### 3.4 Pasaporte personal
+### 3.4 Pasaporte personal (entrada principal)
+
+- Después de iniciar sesión, la app entra en `/pasaporte`.
+- La raíz `/` también redirige al pasaporte; `/panel` se mantiene como redirección por compatibilidad.
+- La navegación ordena **Pasaporte → Mapa → Ranking → Grupo**.
+- El pasaporte funciona **sin grupo**. Si no hay grupos, muestra un CTA para crear uno o unirse; el mapa, el ranking y la vista de grupo explican que la comparación es opcional y enlazan de vuelta al pasaporte.
 
 Métricas derivadas de **todos los viajes en los que participa el usuario**, pertenezcan o no a un grupo:
 
@@ -287,6 +298,7 @@ Desempate: más países → más kilómetros → nombre alfabético. Podio para 
 ### 3.7 PWA
 
 - Manifest completo con nombre, colores, iconos 192/512/maskable, atajos e `id`.
+- `start_url` en `/pasaporte`; el atajo principal abre el pasaporte y los secundarios el mapa y el ranking.
 - Service worker generado por Workbox:
   - precache del shell, CSS/JS, fuentes, banderas y datos;
   - `NetworkFirst` para GET `/api/*` con timeout de 3 s y cache de hasta 30 días;
@@ -316,7 +328,7 @@ Al cerrar sesión, expirar la sesión o iniciar sesión con otra cuenta se vací
 
 El paquete offline pesa ~4,6 MB porque incluye Three.js, el atlas geográfico y 197 banderas SVG; el JS comprimido son ~832 KB.
 
-![Mapa funcionando sin conexión con los datos del grupo](docs/screenshots/offline.webp)
+![Mapa personal funcionando sin conexión con los viajes guardados](docs/screenshots/offline.webp)
 
 ### 3.8 Idioma y copy
 

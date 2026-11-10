@@ -2518,6 +2518,59 @@ textarea:focus-visible,
   opacity: 0.8;
 }
 
+.map-scope {
+  position: absolute;
+  top: 22px;
+  left: 24px;
+  z-index: 25;
+  display: flex;
+  gap: 2px;
+  max-width: min(360px, calc(100% - 590px));
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  background: rgba(5, 22, 28, 0.84);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.map-scope__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 9.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.map-scope__option span {
+  overflow: hidden;
+  max-width: 140px;
+  text-overflow: ellipsis;
+}
+
+.map-scope__option:hover {
+  color: var(--paper);
+}
+
+.map-scope__option.is-active {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.map-scope__option.is-active svg {
+  color: var(--gold-soft);
+}
+
 .map-viewing {
   position: absolute;
   top: 23px;
@@ -2606,6 +2659,22 @@ textarea:focus-visible,
 .map-panel {
   padding-top: 19px;
   border-top: 1px solid var(--line);
+}
+
+.map-panel__personal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.map-panel__personal-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--gold-soft);
 }
 
 .map-panel__head {
@@ -3531,6 +3600,21 @@ textarea:focus-visible,
   justify-content: center;
   gap: 10px;
   margin: 25px 0 20px;
+}
+
+.no-group__passport-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  color: var(--muted-strong);
+  font-size: 10px;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.no-group__passport-link:hover {
+  color: var(--paper);
 }
 
 .no-group__notes {
@@ -5107,6 +5191,22 @@ textarea:focus-visible,
     display: none;
   }
 
+  .map-scope {
+    top: 65px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+
+  .map-scope__option {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .map-scope__option span {
+    max-width: 130px;
+  }
+
   .map-stage {
     height: 62vh;
     min-height: 430px;
@@ -5724,6 +5824,66 @@ textarea:focus-visible,
 
   .podium-card--1 .podium-card__value {
     font-size: 24px;
+  }
+}
+
+.personal-group-invite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(127, 218, 192, 0.16);
+  border-radius: 12px;
+  background: rgba(127, 218, 192, 0.035);
+}
+
+.personal-group-invite__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--mint);
+  background: rgba(127, 218, 192, 0.08);
+}
+
+.personal-group-invite__copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.personal-group-invite__copy strong {
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.personal-group-invite__copy span {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.personal-group-invite__actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .personal-group-invite {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .personal-group-invite__actions {
+    width: 100%;
+    padding-left: 46px;
   }
 }
 

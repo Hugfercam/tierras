@@ -80,15 +80,16 @@ export default function App() {
                       </GroupProvider>
                     }
                   >
+                    <Route path="/pasaporte" element={<DashboardPage />} />
+                    <Route path="/panel" element={<Navigate to="/pasaporte" replace />} />
                     <Route path="/mapa" element={<MapPage />} />
-                    <Route path="/panel" element={<DashboardPage />} />
                     <Route path="/ranking" element={<LeaderboardPage />} />
                     <Route path="/grupo" element={<GroupPage />} />
                     <Route path="/unirse/:code" element={<InvitePage />} />
                   </Route>
                 </Route>
-                <Route path="/" element={<Navigate to="/mapa" replace />} />
-                <Route path="*" element={<Navigate to="/mapa" replace />} />
+                <Route path="/" element={<Navigate to="/pasaporte" replace />} />
+                <Route path="*" element={<Navigate to="/pasaporte" replace />} />
               </Routes>
             </ErrorBoundary>
           </ToastProvider>

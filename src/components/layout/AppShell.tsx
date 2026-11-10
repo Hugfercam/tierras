@@ -15,15 +15,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { to: '/pasaporte', label: 'Pasaporte', icon: 'grid' },
   { to: '/mapa', label: 'Mapa', icon: 'map' },
-  { to: '/panel', label: 'Pasaporte', icon: 'grid' },
   { to: '/ranking', label: 'Ranking', icon: 'trophy' },
   { to: '/grupo', label: 'Grupo', icon: 'users' },
 ];
 
 const TITLES: Record<string, string> = {
-  '/mapa': 'Mapa compartido',
-  '/panel': 'Mi pasaporte',
+  '/pasaporte': 'Mi pasaporte',
+  '/mapa': 'Mapa',
   '/ranking': 'Ranking del grupo',
   '/grupo': 'Mi grupo',
 };
