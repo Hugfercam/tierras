@@ -104,8 +104,28 @@ export function register(input: {
   email: string;
   password: string;
   homeCountryCode: string;
+  acceptPrivacy: true;
+  acceptTerms: true;
+  ageConfirmed: true;
 }): Promise<{ user: AuthUser }> {
   return request('/auth/register', { method: 'POST', body: input });
+}
+
+export function acceptConsents(): Promise<{ consentRequired: boolean }> {
+  return request('/account/consent', { method: 'POST' });
+}
+
+export function updateAccount(input: {
+  name?: string;
+  email?: string;
+  homeCountryCode?: string;
+  currentPassword: string;
+}): Promise<{ user: AuthUser }> {
+  return request('/account', { method: 'PATCH', body: input });
+}
+
+export function deleteAccount(currentPassword: string): Promise<void> {
+  return request('/account', { method: 'DELETE', body: { currentPassword } });
 }
 
 export function logout(): Promise<{ ok: true }> {

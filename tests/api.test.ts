@@ -68,6 +68,9 @@ test('flujo principal: registro, grupo, invitación, visitas y ranking', async (
       email: 'lucia@prueba.test',
       password: 'secreto123',
       homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
     },
   });
   assert.equal(registerLucia.response.status, 201);
@@ -81,6 +84,9 @@ test('flujo principal: registro, grupo, invitación, visitas y ranking', async (
       email: 'mateo@prueba.test',
       password: 'secreto123',
       homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
     },
   });
   assert.equal(registerMateo.response.status, 201);
@@ -202,6 +208,9 @@ test('validación y acceso: sin sesión y grupos ajenos', async () => {
       email: 'diego@prueba.test',
       password: 'secreto123',
       homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
     },
   });
   const diegoCookie = cookieFrom(register.response);
@@ -228,6 +237,9 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
       email: 'ana.viajes@prueba.test',
       password: 'secreto123',
       homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
     },
   });
   const anaCookie = cookieFrom(ana.response);
@@ -238,6 +250,9 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
       email: 'beto.viajes@prueba.test',
       password: 'secreto123',
       homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
     },
   });
   const betoCookie = cookieFrom(beto.response);
@@ -354,6 +369,126 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
   assert.equal(betoAfterPatch.data.stats.countries, 2);
 });
 
+test('RGPD: consentimiento, exportación, rectificación y supresión', async () => {
+  const registration = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Privacidad Prueba',
+      email: 'privacidad@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
+    },
+  });
+  assert.equal(registration.response.status, 201);
+  const cookie = cookieFrom(registration.response);
+  const userId = registration.data.user.id;
+
+  const me = await api<{ user: AuthUser }>('/auth/me', { cookie });
+  assert.equal(me.response.status, 200);
+  assert.equal(me.data.user.consentRequired, false);
+
+  db.prepare('DELETE FROM user_consents WHERE user_id = ?').run(userId);
+  const consentPending = await api<{ user: AuthUser }>('/auth/me', { cookie });
+  assert.equal(consentPending.data.user.consentRequired, true);
+  const blockedOverview = await api('/me/overview', { cookie });
+  assert.equal(blockedOverview.response.status, 403);
+  const accepted = await api<{ consentRequired: boolean }>('/account/consent', {
+    method: 'POST',
+    cookie,
+  });
+  assert.equal(accepted.response.status, 200);
+  assert.equal(accepted.data.consentRequired, false);
+
+  const updated = await api<{ user: AuthUser }>('/account', {
+    method: 'PATCH',
+    cookie,
+    body: { name: 'Privacidad Actualizada', currentPassword: 'secreto123' },
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.data.user.name, 'Privacidad Actualizada');
+
+  const exportedResponse = await fetch(`${baseUrl}/api/account/export`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(exportedResponse.status, 200);
+  assert.match(exportedResponse.headers.get('content-disposition') ?? '', /attachment/);
+  const exported = (await exportedResponse.json()) as {
+    account: { email: string };
+    consents: unknown[];
+  };
+  assert.equal(exported.account.email, 'privacidad@prueba.test');
+  assert.ok(exported.consents.length >= 3);
+  assert.equal(JSON.stringify(exported).includes('password_hash'), false);
+
+  const removed = await api<null>('/account', {
+    method: 'DELETE',
+    cookie,
+    body: { currentPassword: 'secreto123' },
+  });
+  assert.equal(removed.response.status, 204);
+  const afterDelete = await api('/auth/me', { cookie });
+  assert.equal(afterDelete.response.status, 401);
+  const deletedRow = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+  assert.equal(deletedRow, undefined);
+});
+
+test('RGPD: al eliminar una cuenta, el grupo pasa a otra persona', async () => {
+  const owner = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Dueña Temporal',
+      email: 'duena@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
+    },
+  });
+  const member = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Miembro Temporal',
+      email: 'miembro@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
+    },
+  });
+  const ownerCookie = cookieFrom(owner.response);
+  const memberCookie = cookieFrom(member.response);
+  const created = await api<{ group: GroupSummary }>('/groups', {
+    method: 'POST',
+    cookie: ownerCookie,
+    body: { name: 'Grupo heredado' },
+  });
+  const joined = await api('/groups/join', {
+    method: 'POST',
+    cookie: memberCookie,
+    body: { inviteCode: created.data.group.inviteCode },
+  });
+  assert.equal(joined.response.status, 200);
+  const beforeDelete = await api<{ groups: GroupSummary[] }>('/groups', { cookie: memberCookie });
+  assert.equal(beforeDelete.data.groups.length, 1);
+  assert.equal(beforeDelete.data.groups[0]?.myRole, 'member');
+
+  const removed = await api<null>('/account', {
+    method: 'DELETE',
+    cookie: ownerCookie,
+    body: { currentPassword: 'secreto123' },
+  });
+  assert.equal(removed.response.status, 204);
+
+  const groups = await api<{ groups: GroupSummary[] }>('/groups', { cookie: memberCookie });
+  const inherited = groups.data.groups.find((group) => group.id === created.data.group.id);
+  assert.equal(inherited?.myRole, 'owner');
+});
+
 test('el pasaporte personal funciona sin grupo', async () => {
   const solo = await api<{ user: AuthUser }>('/auth/register', {
     method: 'POST',
@@ -362,6 +497,9 @@ test('el pasaporte personal funciona sin grupo', async () => {
       email: 'solo.viajes@prueba.test',
       password: 'secreto123',
       homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
     },
   });
   const cookie = cookieFrom(solo.response);

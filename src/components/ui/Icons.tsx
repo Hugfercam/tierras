@@ -38,7 +38,8 @@ export type IconName =
   | 'compass'
   | 'orbit'
   | 'edit'
-  | 'pin';
+  | 'pin'
+  | 'download';
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -145,6 +146,12 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <circle cx="10.8" cy="10.8" r="6.3" />
       <path d="m15.6 15.6 4.4 4.4M8 10.8h5.6M10.8 8v5.6" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5M4 21h16" />
     </>
   ),
   edit: (

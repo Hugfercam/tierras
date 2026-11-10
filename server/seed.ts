@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { countryName } from '../shared/countries.ts';
+import { recordCurrentConsents } from './consent.ts';
 import type { Database } from './db.ts';
 
 type HashPassword = (password: string) => string;
@@ -158,14 +159,9 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
     for (const [index, user] of users.entries()) {
       const id = randomUUID();
       userIds.set(user.key, id);
-      insertUser.run(
-        id,
-        user.name,
-        user.email,
-        passwordHash,
-        'ES',
-        `2025-01-0${index + 1}T09:00:00.000Z`,
-      );
+      const createdAt = `2025-01-0${index + 1}T09:00:00.000Z`;
+      insertUser.run(id, user.name, user.email, passwordHash, 'ES', createdAt);
+      recordCurrentConsents(db, id, createdAt);
     }
 
     for (const group of groups) {

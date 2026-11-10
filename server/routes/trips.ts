@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { currentUser, requireAuth } from '../auth.ts';
+import { currentUser, requireAuth, requireConsent } from '../auth.ts';
 import type { Database } from '../db.ts';
 import { parseWith } from '../errors.ts';
 import {
@@ -57,6 +57,7 @@ const tripSchema = z
 export function tripRoutes(db: Database): Router {
   const router = Router();
   router.use(requireAuth(db));
+  router.use(requireConsent());
 
   router.get('/', (_req, res) => {
     const user = currentUser(res);
@@ -101,6 +102,7 @@ export function tripRoutes(db: Database): Router {
 export function meRoutes(db: Database): Router {
   const router = Router();
   router.use(requireAuth(db));
+  router.use(requireConsent());
 
   router.get('/overview', (_req, res) => {
     const user = currentUser(res);

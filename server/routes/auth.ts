@@ -17,6 +17,7 @@ import {
   verifyPassword,
 } from '../auth.ts';
 import type { Database } from '../db.ts';
+import { isConsentRequired, recordCurrentConsents } from '../consent.ts';
 import { HttpError, parseWith } from '../errors.ts';
 
 const emailSchema = z
@@ -41,6 +42,9 @@ const registerSchema = z.object({
     .trim()
     .toUpperCase()
     .refine(isCountryCode, 'Elige un país de residencia válido.'),
+  acceptPrivacy: z.literal(true, 'Debes aceptar la política de privacidad.'),
+  acceptTerms: z.literal(true, 'Debes aceptar los términos de uso.'),
+  ageConfirmed: z.literal(true, 'Debes confirmar que tienes al menos 14 años.'),
 });
 
 const loginSchema = z.object({
@@ -77,12 +81,16 @@ export function authRoutes(db: Database): Router {
     const id = randomUUID();
     const passwordHash = await hashPassword(input.password);
 
+    db.exec('BEGIN');
     try {
       db.prepare(
         `INSERT INTO users (id, name, email, password_hash, home_country_code, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       ).run(id, input.name, input.email, passwordHash, input.homeCountryCode, now);
+      recordCurrentConsents(db, id, now);
+      db.exec('COMMIT');
     } catch (error) {
+      db.exec('ROLLBACK');
       if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
         throw new HttpError(409, 'Ya hay una cuenta con ese email.', {
           code: 'EMAIL_TAKEN',
@@ -98,6 +106,7 @@ export function authRoutes(db: Database): Router {
       email: input.email,
       homeCountryCode: input.homeCountryCode,
       createdAt: now,
+      consentRequired: false,
     };
     const token = createSession(db, id);
     setSessionCookie(res, token);
@@ -119,7 +128,7 @@ export function authRoutes(db: Database): Router {
 
     const token = createSession(db, row.id);
     setSessionCookie(res, token);
-    res.json({ user: toAuthUser(row) });
+    res.json({ user: toAuthUser(row, isConsentRequired(db, row.id)) });
   });
 
   router.get('/me', requireAuth(db), (_req, res) => {

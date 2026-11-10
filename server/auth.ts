@@ -2,6 +2,7 @@ import { createHash, randomBytes, scrypt, scryptSync, timingSafeEqual } from 'no
 import { promisify } from 'node:util';
 import type { NextFunction, Request, Response } from 'express';
 import type { AuthUser } from '../shared/types.ts';
+import { isConsentRequired } from './consent.ts';
 import type { Database } from './db.ts';
 
 const scryptAsync = promisify(scrypt);
@@ -90,13 +91,14 @@ export function readSessionToken(req: Request): string | undefined {
   return undefined;
 }
 
-function toAuthUser(row: UserRow): AuthUser {
+function toAuthUser(row: UserRow, consentRequired = false): AuthUser {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     homeCountryCode: row.home_country_code,
     createdAt: row.created_at,
+    consentRequired,
   };
 }
 
@@ -110,7 +112,7 @@ export function findSessionUser(db: Database, token: string | undefined): AuthUs
        WHERE s.id = ? AND s.expires_at > ?`,
     )
     .get(hashToken(token), new Date().toISOString()) as SessionRow | undefined;
-  return row ? toAuthUser(row) : null;
+  return row ? toAuthUser(row, isConsentRequired(db, row.id)) : null;
 }
 
 export function requireAuth(db: Database) {
@@ -129,6 +131,20 @@ export function requireAuth(db: Database) {
 
 export function currentUser(res: Response): AuthUser {
   return res.locals.user as AuthUser;
+}
+
+export function requireConsent() {
+  return (_req: Request, res: Response, next: NextFunction): void => {
+    const user = currentUser(res);
+    if (user.consentRequired) {
+      res.status(403).json({
+        error: 'Acepta la política de privacidad y los términos para continuar.',
+        code: 'CONSENT_REQUIRED',
+      });
+      return;
+    }
+    next();
+  };
 }
 
 export function currentSessionToken(res: Response): string | undefined {

@@ -41,6 +41,8 @@ No hay proveedor de mapas, geocodificación ni autenticación externos. Eso mant
 │   ├── app.ts                 # Express, seguridad, API y estáticos
 │   ├── db.ts                  # SQLite y migraciones versionadas
 │   ├── auth.ts                # scrypt, sesiones y cookies
+│   ├── consent.ts             # versiones y registro de consentimientos
+│   ├── account-service.ts     # exportación, rectificación y supresión
 │   ├── group-service.ts       # grupos, comparación y métricas
 │   ├── trip-service.ts        # viajes, paradas, participantes y pasaporte
 │   ├── seed.ts                # datos demo idempotentes
@@ -160,7 +162,7 @@ Decisiones del modelo:
 - **Varios viajes al mismo país**: un país cuenta una vez para países y kilómetros, pero el historial conserva todos los viajes.
 - **Las paradas son detalle descriptivo**: una ciudad sin coordenadas sigue en el itinerario, pero no se inventa un punto en el globo.
 - **Fechas**: el viaje tiene rango de fechas; las paradas pueden tener fechas opcionales dentro de ese rango.
-- **Migración versionada**: `visits` y `visit_cities` quedan como fuente histórica. La versión 2 crea viajes personales, colapsa marcas duplicadas de la misma persona/país/fecha y conserva las paradas. La versión se guarda con `PRAGMA user_version`.
+- **Migración versionada**: `visits` y `visit_cities` quedan como fuente histórica. La versión 2 crea viajes personales, colapsa marcas duplicadas de la misma persona/país/fecha y conserva las paradas. La versión 3 crea `user_consents`. La versión se guarda con `PRAGMA user_version`.
 - **El código de invitación es permanente en esta versión** y lo ven todos los miembros del grupo. No hay enlace con caducidad.
 - **Rol**: `owner` identifica al creador; el propietario del viaje puede editarlo.
 - **Sesión**: cookie `HttpOnly`, `SameSite=Lax`, 30 días; el token se guarda hasheado en SQLite.
@@ -339,6 +341,27 @@ El paquete offline pesa ~4,6 MB porque incluye Three.js, el atlas geográfico y 
 - No hay i18n en v1. Si se añade otro idioma, el camino previsto es `es-ES` como base y una variante regional como `es-AR`, no mezclar registros en la misma interfaz.
 - Una prueba automática revisa que no reaparezcan formas de voseo en `src`, `server`, `shared`, `README.md`, `index.html` o `vite.config.ts`.
 
+### 3.9 RGPD y privacidad
+
+Base técnica incluida:
+
+- Registro con aceptación expresa de **política de privacidad**, **términos** y **edad mínima de 14 años**.
+- Consentimientos versionados en `user_consents` (tipo, versión y fecha), sin guardar IP.
+- Usuarios anteriores sin consentimiento pasan por `/consentimiento` antes de usar la app.
+- Páginas públicas `/privacidad`, `/terminos` y `/cookies`.
+- **Portabilidad**: exportación JSON desde `/api/account/export` y “Mi cuenta”.
+- **Rectificación**: cambio de nombre y email con contraseña actual.
+- **Supresión**: eliminación de cuenta con contraseña y confirmación; los grupos de los que sea propietario pasan a otra persona o se eliminan si no queda nadie.
+- Cookies: solo `tierras_session` (técnica y HttpOnly). Sin analítica, publicidad ni banner de cookies.
+- Caché de API excluye `/api/account` para no guardar exportaciones ni datos de cuenta.
+- La eliminación de cuenta borra sesiones, consentimientos y viajes propios; los viajes compartidos donde solo participaba se desvinculan.
+
+> **Antes de producción:** las páginas legales usan `VITE_LEGAL_NAME`, `VITE_LEGAL_NIF`, `VITE_LEGAL_ADDRESS`, `VITE_LEGAL_EMAIL`, `VITE_LEGAL_HOSTING` y `VITE_LEGAL_COUNTRY`. Hay que completarlas con los datos reales del responsable y revisar los textos con asesoría legal. Esta implementación es una base técnica, no una certificación de cumplimiento.
+
+Limitación conocida: el propietario puede añadir participantes de sus grupos sin una aceptación individual registrada. Antes de producción hay que decidir si se implanta ese consentimiento o se retira la función.
+
+Documentación operativa: [docs/rgpd.md](docs/rgpd.md).
+
 ---
 
 ## 4. API
@@ -351,7 +374,12 @@ Todas las rutas privadas usan cookie de sesión y comprueban membresía.
 | POST | `/api/auth/register` | Crea usuario y sesión. |
 | POST | `/api/auth/login` | Inicia sesión. |
 | POST | `/api/auth/logout` | Borra sesión y cookie. |
-| GET | `/api/auth/me` | Usuario actual. |
+| GET | `/api/auth/me` | Usuario actual y si necesita consentimiento. |
+| GET | `/api/account/export` | Exportación JSON de cuenta, grupos, viajes y consentimientos. |
+| PATCH | `/api/account` | Rectificación de nombre/email con contraseña actual. |
+| DELETE | `/api/account` | Supresión de cuenta con contraseña actual. |
+| GET | `/api/account/consent` | Estado y versiones de consentimiento. |
+| POST | `/api/account/consent` | Acepta las versiones vigentes. |
 | GET | `/api/groups` | Grupos del usuario con rol y conteos. |
 | POST | `/api/groups` | Crea grupo; devuelve código de invitación. |
 | POST | `/api/groups/join` | Une por código. |
@@ -467,7 +495,7 @@ npm run typecheck
 npm run build
 ```
 
-`npm test` ejecuta **17 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
+`npm test` ejecuta **19 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
 
 - Haversine con tolerancia;
 - conteo de países/continentes y porcentaje;
@@ -482,6 +510,7 @@ npm run build
 - los kilómetros no cambian al agregar ciudades;
 - construcción de marcadores de ciudad: agrupación por coordenadas, filtrado por miembro y omisión de ciudades sin ubicación;
 - guardia de copy: falla si reaparece una forma de voseo rioplatense en la interfaz o la documentación;
+- RGPD: consentimiento versionado, exportación JSON sin contraseñas, rectificación y supresión;
 - validación de formularios y aislamiento de grupos ajenos (404).
 
 Verificación PWA realizada en build de producción:
@@ -525,7 +554,7 @@ Estos puntos no estaban especificados y se resolvieron así para esta v1. Son lo
 9. **Sin administración de grupo**: no hay transferencia de propiedad, expulsión, abandono, borrado de grupo ni de cuenta.
 10. **Offline de solo lectura**: las escrituras requieren red; no hay cola de sincronización ni resolución de conflictos.
 11. **Sin notificaciones, chat ni fotos**: intencionalmente fuera de alcance. Cada parada admite una nota de texto, editable desde el viaje.
-12. **Privacidad**: no hay perfiles públicos. Un grupo solo es accesible con sesión y membresía, pero muestra las estadísticas personales de sus miembros, incluidos los viajes realizados en solitario. Los datos de la API cacheada se purgan al cambiar de cuenta.
+12. **Privacidad**: no hay perfiles públicos. Un grupo solo es accesible con sesión y membresía, pero muestra las estadísticas personales de sus miembros, incluidos los viajes realizados en solitario. Hay consentimiento versionado, exportación JSON, rectificación y supresión de cuenta. Los datos de la API cacheada se purgan al cambiar de cuenta.
 13. **Participantes sin confirmación**: el propietario puede añadir a alguien de sus grupos y sus países cuentan automáticamente. En una versión futura convendría un flujo de aceptación.
 14. **Una sola instancia**: SQLite + proceso único; para escalar habría que migrar a Postgres y almacenamiento de sesiones compartido.
 

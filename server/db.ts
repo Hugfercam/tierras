@@ -65,6 +65,23 @@ const migrations: Migration[] = [
       backfillTripsFromVisits(db);
     },
   },
+  {
+    version: 3,
+    name: 'privacy-consents',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_consents (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL CHECK (kind IN ('privacy', 'terms', 'age')),
+          version TEXT NOT NULL,
+          accepted_at TEXT NOT NULL,
+          UNIQUE (user_id, kind, version)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_consents_user ON user_consents(user_id);
+      `);
+    },
+  },
 ];
 
 function migrate(db: Database): void {

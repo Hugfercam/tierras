@@ -88,6 +88,17 @@ export function UserMenu() {
           ) : null}
           <button
             type="button"
+            className="popover__action"
+            onClick={() => {
+              setOpen(false);
+              navigate('/cuenta');
+            }}
+          >
+            <Icon name="user" size={17} />
+            Mi cuenta y privacidad
+          </button>
+          <button
+            type="button"
             className="popover__action popover__action--quiet"
             onClick={handleLogout}
             disabled={loading}

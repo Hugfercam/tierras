@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { currentUser, requireAuth } from '../auth.ts';
+import { currentUser, requireAuth, requireConsent } from '../auth.ts';
 import type { Database } from '../db.ts';
 import { HttpError, parseWith } from '../errors.ts';
 import {
@@ -88,6 +88,7 @@ const addVisitCitySchema = z
 export function groupRoutes(db: Database): Router {
   const router = Router();
   router.use(requireAuth(db));
+  router.use(requireConsent());
 
   router.get('/', (_req, res) => {
     const user = currentUser(res);

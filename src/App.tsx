@@ -15,6 +15,9 @@ import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MapPage } from './pages/MapPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ConsentPage } from './pages/ConsentPage';
+import { AccountPage } from './pages/AccountPage';
+import { LegalPage } from './pages/LegalPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +33,7 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, consentRequired } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -49,6 +52,13 @@ function ProtectedRoute() {
         state={{ from: `${location.pathname}${location.search}` }}
       />
     );
+  }
+  if (
+    consentRequired &&
+    location.pathname !== '/consentimiento' &&
+    location.pathname !== '/cuenta'
+  ) {
+    return <Navigate to="/consentimiento" replace />;
   }
   return <Outlet />;
 }
@@ -72,7 +82,11 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/registro" element={<RegisterPage />} />
+                <Route path="/privacidad" element={<LegalPage kind="privacy" />} />
+                <Route path="/terminos" element={<LegalPage kind="terms" />} />
+                <Route path="/cookies" element={<LegalPage kind="cookies" />} />
                 <Route element={<ProtectedRoute />}>
+                  <Route path="/consentimiento" element={<ConsentPage />} />
                   <Route
                     element={
                       <GroupProvider>
@@ -85,6 +99,7 @@ export default function App() {
                     <Route path="/mapa" element={<MapPage />} />
                     <Route path="/ranking" element={<LeaderboardPage />} />
                     <Route path="/grupo" element={<GroupPage />} />
+                    <Route path="/cuenta" element={<AccountPage />} />
                     <Route path="/unirse/:code" element={<InvitePage />} />
                   </Route>
                 </Route>

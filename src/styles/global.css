@@ -6166,6 +6166,263 @@ textarea:focus-visible,
   }
 }
 
+/* Cuenta, consentimiento y legales */
+
+.consent-checks {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 10.5px;
+  line-height: 1.55;
+  cursor: pointer;
+}
+
+.consent-check input {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+
+.consent-check input:checked {
+  border-color: var(--mint);
+  background: var(--mint);
+}
+
+.consent-check input:checked::after {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--ink-950);
+  content: '✓';
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.auth-form .consent-check {
+  color: var(--ink-700);
+}
+
+.auth-form .consent-check a {
+  color: #b64b33;
+}
+
+.auth-form .consent-check input {
+  border-color: rgba(7, 26, 33, 0.32);
+  background: rgba(7, 26, 33, 0.06);
+}
+
+.auth-form .consent-check input:checked {
+  border-color: #1c7c67;
+  background: #1c7c67;
+}
+
+.consent-check a,
+.legal-doc a,
+.account-card__links a {
+  color: var(--gold-soft);
+  text-underline-offset: 2px;
+}
+
+.consent-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 126, 93, 0.09), transparent 38%),
+    var(--ink-950);
+}
+
+.consent-screen__card {
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--ink-900);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+}
+
+.consent-screen__card h1 {
+  margin: 10px 0 12px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.consent-screen__card > p {
+  color: var(--muted-strong);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.consent-screen__foot {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  color: var(--gold-soft);
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.legal-page {
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--ink-950);
+}
+
+.legal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 840px;
+  margin: 0 auto 28px;
+}
+
+.legal-back {
+  color: var(--muted-strong);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.legal-doc {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--ink-900);
+}
+
+.legal-doc h1 {
+  margin: 10px 0 8px;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.legal-doc h2 {
+  margin: 28px 0 8px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.legal-doc p,
+.legal-doc li {
+  color: var(--muted-strong);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.legal-doc ul {
+  padding-left: 18px;
+}
+
+.legal-version {
+  color: var(--muted) !important;
+  font-size: 9px !important;
+}
+
+.legal-warning {
+  margin: 14px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 126, 93, 0.25);
+  border-radius: 8px;
+  color: var(--coral-soft) !important;
+  background: rgba(255, 126, 93, 0.06);
+}
+
+.legal-contact {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.legal-contact strong {
+  color: var(--paper);
+  font-size: 11px;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.account-card {
+  padding: 20px;
+}
+
+.account-card h2 {
+  margin: 6px 0 14px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.account-card--danger {
+  border-color: rgba(255, 126, 93, 0.2);
+}
+
+.account-card__text {
+  margin: 0 0 12px;
+  color: var(--muted-strong);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.account-card__links {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.account-error {
+  margin-top: 14px;
+}
+
+@media (max-width: 760px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .legal-doc {
+    padding: 20px;
+  }
+
+  .legal-doc h1 {
+    font-size: 32px;
+  }
+
+  .consent-screen {
+    padding: 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
