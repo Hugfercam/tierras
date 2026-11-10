@@ -35,7 +35,37 @@ function isEmpty(db: Database): boolean {
   return row.count === 0;
 }
 
+interface MigrationContext {
+  hadVisitCitiesTable: boolean;
+}
+
+interface Migration {
+  version: number;
+  name: string;
+  up: (db: Database, context: MigrationContext) => void;
+}
+
+const migrations: Migration[] = [
+  {
+    version: 1,
+    name: 'backfill-legacy-visit-cities',
+    up(db, { hadVisitCitiesTable }) {
+      // Si `visit_cities` ya existía, esta base pasó por el código anterior.
+      // Aquel código ya intentó el backfill en cada arranque, así que no lo
+      // repetimos: de lo contrario resucitaríamos ciudades borradas a mano.
+      // Solo las bases anteriores al modelo de ciudades necesitan la conversión.
+      if (!hadVisitCitiesTable) backfillLegacyVisitCities(db);
+    },
+  },
+];
+
 function migrate(db: Database): void {
+  const hadVisitCitiesTable = tableExists(db, 'visit_cities');
+  ensureBaseSchema(db);
+  runMigrations(db, { hadVisitCitiesTable });
+}
+
+function ensureBaseSchema(db: Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -99,16 +129,54 @@ function migrate(db: Database): void {
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   `);
+}
 
-  migrateLegacyCities(db);
+function tableExists(db: Database, name: string): boolean {
+  return Boolean(
+    db
+      .prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(name),
+  );
+}
+
+function schemaVersion(db: Database): number {
+  const row = db.prepare('PRAGMA user_version').get() as { user_version: number };
+  return row.user_version;
+}
+
+function runMigrations(db: Database, context: MigrationContext): void {
+  const current = schemaVersion(db);
+  const latest = migrations[migrations.length - 1]?.version ?? 0;
+  if (current > latest) {
+    throw new Error(
+      `La base de datos usa la versión de esquema ${current}, más nueva que la soportada (${latest}).`,
+    );
+  }
+
+  for (const migration of migrations) {
+    if (migration.version <= current) continue;
+
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      migration.up(db, context);
+      db.exec(`PRAGMA user_version = ${migration.version}`);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
 }
 
 /**
  * Las versiones anteriores guardaban una sola ciudad en visits.city_name.
  * La convertimos en la primera fila de visit_cities sin borrar ni modificar
- * la columna original, que sigue siendo el punto de referencia para los km.
+ * la columna original, que sigue formando parte de la compatibilidad de la API.
+ *
+ * Solo se llama desde la migración versión 1 cuando la tabla visit_cities
+ * todavía no existía. La transacción la abre el runner de migraciones.
  */
-function migrateLegacyCities(db: Database): void {
+function backfillLegacyVisitCities(db: Database): void {
   const pending = db
     .prepare(
       `SELECT v.id, TRIM(v.city_name) AS city_name, v.lat, v.lng, v.created_at
@@ -132,21 +200,14 @@ function migrateLegacyCities(db: Database): void {
      VALUES (?, ?, ?, ?, ?, ?)`,
   );
 
-  db.exec('BEGIN');
-  try {
-    for (const visit of pending) {
-      insert.run(
-        randomUUID(),
-        visit.id,
-        visit.city_name,
-        Number.isFinite(visit.lat) ? visit.lat : null,
-        Number.isFinite(visit.lng) ? visit.lng : null,
-        visit.created_at,
-      );
-    }
-    db.exec('COMMIT');
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
+  for (const visit of pending) {
+    insert.run(
+      randomUUID(),
+      visit.id,
+      visit.city_name,
+      Number.isFinite(visit.lat) ? visit.lat : null,
+      Number.isFinite(visit.lng) ? visit.lng : null,
+      visit.created_at,
+    );
   }
 }

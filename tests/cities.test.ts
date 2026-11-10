@@ -58,6 +58,59 @@ async function api<T>(
   return { response, data };
 }
 
+function schemaVersion(database: Database): number {
+  const row = database.prepare('PRAGMA user_version').get() as { user_version: number };
+  return row.user_version;
+}
+
+function createLegacyDatabase(file: string, options: { withCitiesTable?: boolean } = {}): void {
+  const raw = new DatabaseSync(file);
+  raw.exec(`
+    CREATE TABLE visits (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      country_code TEXT NOT NULL,
+      city_name TEXT,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      visited_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (group_id, user_id, country_code)
+    );
+  `);
+  if (options.withCitiesTable) {
+    raw.exec(`
+      CREATE TABLE visit_cities (
+        id TEXT PRIMARY KEY,
+        visit_id TEXT NOT NULL,
+        city_name TEXT NOT NULL COLLATE NOCASE,
+        lat REAL,
+        lng REAL,
+        created_at TEXT NOT NULL,
+        UNIQUE (visit_id, city_name)
+      );
+    `);
+  }
+  raw
+    .prepare(
+      `INSERT INTO visits
+         (id, group_id, user_id, country_code, city_name, lat, lng, visited_at, created_at)
+       VALUES
+         ('legacy-visit', 'g', 'u', 'BE', 'Bruselas', 50.85, 4.35, '2024-01-01', '2024-01-02T00:00:00Z')`,
+    )
+    .run();
+  raw.close();
+}
+
+async function removeDatabase(file: string): Promise<void> {
+  await Promise.all([
+    rm(file, { force: true }),
+    rm(`${file}-shm`, { force: true }),
+    rm(`${file}-wal`, { force: true }),
+  ]);
+}
+
 test('las ciudades se agregan, se listan y no alteran los km', async () => {
   const luciaRegistration = await api<{ user: { id: string } }>('/auth/register', {
     method: 'POST',
@@ -231,26 +284,7 @@ test('la semilla demo crea una ciudad por cada visita', async () => {
 
 test('la migración convierte visits.city_name en la primera ciudad', async () => {
   const file = resolve(`data/cities-migration-${randomUUID()}.db`);
-  const raw = new DatabaseSync(file);
-  raw.exec(`
-    CREATE TABLE visits (
-      id TEXT PRIMARY KEY,
-      group_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      country_code TEXT NOT NULL,
-      city_name TEXT,
-      lat REAL NOT NULL,
-      lng REAL NOT NULL,
-      visited_at TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      UNIQUE (group_id, user_id, country_code)
-    );
-    INSERT INTO visits
-      (id, group_id, user_id, country_code, city_name, lat, lng, visited_at, created_at)
-    VALUES
-      ('legacy-visit', 'g', 'u', 'BE', 'Bruselas', 50.85, 4.35, '2024-01-01', '2024-01-02T00:00:00Z');
-  `);
-  raw.close();
+  createLegacyDatabase(file);
 
   try {
     const migrated = openDatabase({ file, seedDemo: false });
@@ -260,6 +294,7 @@ test('la migración convierte visits.city_name en la primera ciudad', async () =
     assert.equal(rows.length, 1);
     assert.equal(rows[0].city_name, 'Bruselas');
     assert.equal(rows[0].lat, 50.85);
+    assert.equal(schemaVersion(migrated), 1);
     migrated.close();
 
     const reopened = openDatabase({ file, seedDemo: false });
@@ -267,12 +302,65 @@ test('la migración convierte visits.city_name en la primera ciudad', async () =
       .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
       .get('legacy-visit') as { count: number };
     assert.equal(count.count, 1, 'La migración debe ser idempotente');
+    assert.equal(schemaVersion(reopened), 1);
     reopened.close();
   } finally {
-    await Promise.all([
-      rm(file, { force: true }),
-      rm(`${file}-shm`, { force: true }),
-      rm(`${file}-wal`, { force: true }),
-    ]);
+    await removeDatabase(file);
+  }
+});
+
+test('una migración ya aplicada no restaura ciudades borradas al reabrir', async () => {
+  const file = resolve(`data/cities-deleted-${randomUUID()}.db`);
+  createLegacyDatabase(file);
+
+  try {
+    const migrated = openDatabase({ file, seedDemo: false });
+    try {
+      const initial = migrated
+        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .get('legacy-visit') as { count: number };
+      assert.equal(initial.count, 1);
+
+      migrated.prepare('DELETE FROM visit_cities WHERE visit_id = ?').run('legacy-visit');
+      const deleted = migrated
+        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .get('legacy-visit') as { count: number };
+      assert.equal(deleted.count, 0);
+    } finally {
+      migrated.close();
+    }
+
+    const reopened = openDatabase({ file, seedDemo: false });
+    try {
+      const count = reopened
+        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .get('legacy-visit') as { count: number };
+      assert.equal(count.count, 0, 'Las ciudades borradas no deben resucitar');
+      assert.equal(schemaVersion(reopened), 1);
+    } finally {
+      reopened.close();
+    }
+  } finally {
+    await removeDatabase(file);
+  }
+});
+
+test('una base existente con visit_cities vacía no se backfillea al actualizar', async () => {
+  const file = resolve(`data/cities-existing-schema-${randomUUID()}.db`);
+  createLegacyDatabase(file, { withCitiesTable: true });
+
+  try {
+    const upgraded = openDatabase({ file, seedDemo: false });
+    try {
+      const count = upgraded
+        .prepare('SELECT COUNT(*) AS count FROM visit_cities WHERE visit_id = ?')
+        .get('legacy-visit') as { count: number };
+      assert.equal(count.count, 0, 'La actualización no debe recuperar ciudades borradas');
+      assert.equal(schemaVersion(upgraded), 1);
+    } finally {
+      upgraded.close();
+    }
+  } finally {
+    await removeDatabase(file);
   }
 });
