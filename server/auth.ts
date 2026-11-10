@@ -15,6 +15,7 @@ interface UserRow {
   name: string;
   email: string;
   home_country_code: string;
+  email_verified_at: string | null;
   created_at: string;
 }
 
@@ -98,6 +99,7 @@ function toAuthUser(row: UserRow, consentRequired = false): AuthUser {
     email: row.email,
     homeCountryCode: row.home_country_code,
     createdAt: row.created_at,
+    emailVerified: Boolean(row.email_verified_at),
     consentRequired,
   };
 }
@@ -106,7 +108,8 @@ export function findSessionUser(db: Database, token: string | undefined): AuthUs
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT u.id, u.name, u.email, u.home_country_code, u.created_at, s.expires_at
+      `SELECT u.id, u.name, u.email, u.home_country_code, u.email_verified_at, u.created_at,
+              s.expires_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.id = ? AND s.expires_at > ?`,
@@ -131,6 +134,25 @@ export function requireAuth(db: Database) {
 
 export function currentUser(res: Response): AuthUser {
   return res.locals.user as AuthUser;
+}
+
+
+export function requireVerifiedEmail() {
+  return (_req: Request, res: Response, next: NextFunction): void => {
+    if (process.env.NODE_ENV !== 'production') {
+      next();
+      return;
+    }
+    const user = currentUser(res);
+    if (!user.emailVerified) {
+      res.status(403).json({
+        error: 'Verifica tu email antes de crear o unirte a un grupo.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+      return;
+    }
+    next();
+  };
 }
 
 export function requireConsent() {

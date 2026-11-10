@@ -123,6 +123,23 @@ export function leaveTrip(tripId: string): Promise<void> {
   return request(`/me/trips/${tripId}/participation`, { method: 'DELETE' });
 }
 
+
+export function forgotPassword(email: string): Promise<{ ok: boolean }> {
+  return request('/auth/forgot-password', { method: 'POST', body: { email } });
+}
+
+export function resetPassword(token: string, password: string): Promise<{ ok: boolean }> {
+  return request('/auth/reset-password', { method: 'POST', body: { token, password } });
+}
+
+export function verifyEmail(token: string): Promise<{ ok: boolean }> {
+  return request('/auth/verify-email', { method: 'POST', body: { token } });
+}
+
+export function resendVerification(): Promise<{ ok: boolean }> {
+  return request('/auth/resend-verification', { method: 'POST' });
+}
+
 export function acceptConsents(): Promise<{ consentRequired: boolean }> {
   return request('/account/consent', { method: 'POST' });
 }

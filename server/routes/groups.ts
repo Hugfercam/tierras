@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { currentUser, requireAuth, requireConsent } from '../auth.ts';
+import {
+  currentUser,
+  requireAuth,
+  requireConsent,
+  requireVerifiedEmail,
+} from '../auth.ts';
 import type { Database } from '../db.ts';
 import { HttpError, parseWith } from '../errors.ts';
 import {
@@ -95,14 +100,14 @@ export function groupRoutes(db: Database): Router {
     res.json({ groups: listGroups(db, user.id) });
   });
 
-  router.post('/', (req, res) => {
+  router.post('/', requireVerifiedEmail(), (req, res) => {
     const user = currentUser(res);
     const input = parseWith(createGroupSchema, req.body);
     const group = createGroup(db, user.id, input.name);
     res.status(201).json({ group });
   });
 
-  router.post('/join', (req, res) => {
+  router.post('/join', requireVerifiedEmail(), (req, res) => {
     const user = currentUser(res);
     const input = parseWith(joinGroupSchema, req.body);
     const group = joinGroup(db, user.id, input.inviteCode);

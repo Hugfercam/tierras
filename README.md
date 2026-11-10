@@ -163,7 +163,7 @@ Decisiones del modelo:
 - **Varios viajes al mismo país**: un país cuenta una vez para países y kilómetros, pero el historial conserva todos los viajes.
 - **Las paradas son detalle descriptivo**: una ciudad sin coordenadas sigue en el itinerario, pero no se inventa un punto en el globo.
 - **Fechas**: el viaje tiene rango de fechas; las paradas pueden tener fechas opcionales dentro de ese rango.
-- **Migración versionada**: `visits` y `visit_cities` quedan como fuente histórica. La versión 2 crea viajes personales, colapsa marcas duplicadas de la misma persona/país/fecha y conserva las paradas. La versión 3 crea `user_consents`, la 4 añade el estado de consentimiento de los participantes y la 5 añade la visibilidad de los viajes. La versión se guarda con `PRAGMA user_version`.
+- **Migración versionada**: `visits` y `visit_cities` quedan como fuente histórica. La versión 2 crea viajes personales, colapsa marcas duplicadas de la misma persona/país/fecha y conserva las paradas. La versión 3 crea `user_consents`, la 4 añade el estado de consentimiento de los participantes, la 5 la visibilidad de los viajes y la 6 la verificación de email y los tokens de recuperación. La versión se guarda con `PRAGMA user_version`.
 - **El código de invitación es permanente en esta versión** y lo ven todos los miembros del grupo. No hay enlace con caducidad.
 - **Rol**: `owner` identifica al creador; el propietario del viaje puede editarlo.
 - **Sesión**: cookie `HttpOnly`, `SameSite=Lax`, 30 días; el token se guarda hasheado en SQLite.
@@ -366,6 +366,17 @@ Los participantes reciben una invitación y deben aceptarla antes de que el viaj
 
 Documentación operativa: [docs/rgpd.md](docs/rgpd.md).
 
+### 3.10 Autenticación endurecida
+
+- **Rate limiting en memoria** por IP y email en registro, login, recuperación, verificación y reenvío. En una sola instancia; si se escala, sustituir por Redis u otro almacén compartido.
+- **Verificación de email** con token de un solo uso, 24 horas de validez y reenvío desde el aviso de la app.
+- **Recuperación de contraseña** con token de una hora, respuesta neutra para no revelar si el email existe y revocación de todas las sesiones al cambiarla.
+- **Cambio de email** invalida la verificación anterior y envía un enlace nuevo.
+- En producción, las cuentas sin verificar no pueden crear ni unirse a grupos.
+- Los emails se envían mediante `EMAIL_WEBHOOK_URL`; en desarrollo se imprimen en consola. `APP_URL` construye los enlaces.
+- Los tokens se guardan hasheados en `auth_tokens`; nunca se guarda el token en claro.
+- `npm run backup` crea un backup verificado con `VACUUM INTO` y `PRAGMA integrity_check`.
+
 ---
 
 ## 4. API
@@ -378,7 +389,11 @@ Todas las rutas privadas usan cookie de sesión y comprueban membresía.
 | POST | `/api/auth/register` | Crea usuario y sesión. |
 | POST | `/api/auth/login` | Inicia sesión. |
 | POST | `/api/auth/logout` | Borra sesión y cookie. |
-| GET | `/api/auth/me` | Usuario actual y si necesita consentimiento. |
+| GET | `/api/auth/me` | Usuario actual, consentimiento y email verificado. |
+| POST | `/api/auth/forgot-password` | Envía enlace de recuperación (respuesta neutra). |
+| POST | `/api/auth/reset-password` | Cambia contraseña y revoca sesiones. |
+| POST | `/api/auth/verify-email` | Verifica el email con token. |
+| POST | `/api/auth/resend-verification` | Reenvía la verificación. |
 | GET | `/api/account/export` | Exportación JSON de cuenta, grupos, viajes y consentimientos. |
 | PATCH | `/api/account` | Rectificación de nombre/email con contraseña actual. |
 | DELETE | `/api/account` | Supresión de cuenta con contraseña actual. |
@@ -457,6 +472,11 @@ npm start
 | `SEED_DEMO` | `false` | Siembra la demo **solo si la base está vacía**. |
 | `COOKIE_SECURE` | `false` | Poner `true` con HTTPS. |
 | `ENV_FILE` | `.env` | Archivo de entorno del servidor; en staging, `.env.staging`. |
+| `APP_URL` | `http://127.0.0.1:3001` | URL pública para enlaces de email y cookies. |
+| `TRUST_PROXY` | `false` | `true` si hay proxy inverso con HTTPS delante. |
+| `EMAIL_WEBHOOK_URL` | vacío | Webhook del proveedor de email (Resend, Postmark, etc.). |
+| `EMAIL_WEBHOOK_TOKEN` | vacío | Bearer opcional para el webhook. |
+| `EMAIL_CONSOLE` | `true` | En local imprime los emails en consola. |
 | `API_URL` | `http://127.0.0.1:3001` | Solo dev: destino del proxy de Vite. |
 | `VITE_LEGAL_*` | Pendiente | Datos del responsable en las páginas legales. |
 
@@ -505,6 +525,9 @@ Checklist de producción:
 5. Una sola instancia/replica: SQLite en modo WAL no está pensado para varias instancias escribiendo.
 6. El service worker exige HTTPS (excepto `localhost`).
 7. Tamaño máximo de subida JSON fijado en 100 KB; no hay archivos.
+8. Configurar `APP_URL`, `EMAIL_WEBHOOK_URL`, `EMAIL_WEBHOOK_TOKEN`, HTTPS y `TRUST_PROXY=true`.
+9. Programar `npm run backup` y probar la restauración.
+10. Verificar que los usuarios nuevos validan el email antes de crear o unirse a grupos.
 
 ---
 
@@ -518,7 +541,7 @@ npm run typecheck
 npm run build
 ```
 
-`npm test` ejecuta **20 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
+`npm test` ejecuta **22 pruebas** con el runner nativo en modo sin aislamiento (compatible con entornos que bloquean procesos hijos) y cubre:
 
 - Haversine con tolerancia;
 - conteo de países/continentes y porcentaje;
@@ -529,6 +552,7 @@ npm run build
 - migración versionada de `visits.city_name` a `visit_cities` y de visitas antiguas a viajes;
 - viajes multipaís: países únicos, paradas ordenadas, invitaciones pendientes, aceptación, salida y visibilidad privada/grupo;
 - visibilidad: un viaje privado no entra en el grupo hasta compartirlo;
+- autenticación: rate limiting, verificación de email y recuperación de contraseña;
 - pasaporte personal sin grupo, con viaje propio;
 - varios viajes al mismo país sin duplicar países ni kilómetros;
 - los kilómetros no cambian al agregar ciudades;

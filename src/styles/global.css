@@ -6393,6 +6393,91 @@ textarea:focus-visible,
   text-underline-offset: 2px;
 }
 
+.email-verify-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 10px auto 0;
+  width: min(1120px, calc(100% - 48px));
+  padding: 9px 12px;
+  border: 1px solid rgba(243, 197, 107, 0.22);
+  border-radius: 9px;
+  color: var(--gold-soft);
+  background: rgba(243, 197, 107, 0.06);
+  font-size: 9.5px;
+}
+
+.email-verify-banner span {
+  flex: 1;
+  color: var(--muted-strong);
+}
+
+.email-verify-banner strong {
+  color: var(--gold-soft);
+}
+
+.email-verify-banner button {
+  padding: 0;
+  border: 0;
+  color: var(--paper);
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.auth-inline-link {
+  margin: 2px 0 10px;
+  text-align: right;
+  font-size: 9px;
+}
+
+.auth-inline-link a {
+  color: var(--muted-strong);
+}
+
+.verify-state {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.verify-state h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.verify-state p {
+  color: var(--muted-strong);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.verify-state__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+
+.verify-state__icon.is-ok {
+  color: var(--mint);
+  background: rgba(127, 218, 192, 0.1);
+}
+
+.verify-state__icon.is-error {
+  color: var(--coral-soft);
+  background: rgba(255, 126, 93, 0.1);
+}
+
 .consent-screen {
   display: grid;
   min-height: 100vh;

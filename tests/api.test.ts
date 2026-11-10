@@ -3,6 +3,8 @@ import test, { after, before } from 'node:test';
 import type { Server } from 'node:http';
 import { createApp } from '../server/app.ts';
 import type { Database } from '../server/db.ts';
+import { getMailOutbox } from '../server/mail.ts';
+import { RateLimiter } from '../server/rate-limit.ts';
 import type {
   AuthUser,
   GroupOverview,
@@ -59,6 +61,16 @@ async function api<T>(
   const data = (await response.json().catch(() => null)) as T;
   return { response, data };
 }
+
+test('rate limit: bloquea después del máximo de la ventana', () => {
+  const limiter = new RateLimiter(60_000, 2);
+  assert.equal(limiter.take('ip').allowed, true);
+  assert.equal(limiter.take('ip').allowed, true);
+  const blocked = limiter.take('ip');
+  assert.equal(blocked.allowed, false);
+  assert.ok(blocked.retryAfter > 0);
+  assert.equal(limiter.take('otra-ip').allowed, true);
+});
 
 test('flujo principal: registro, grupo, invitación, visitas y ranking', async () => {
   const registerLucia = await api<{ user: AuthUser }>('/auth/register', {
@@ -488,6 +500,70 @@ test('visibilidad: un viaje privado no entra en el grupo hasta compartirlo', asy
     cookie,
   });
   assert.equal(sharedGroup.data.stats.countries, 1);
+});
+
+test('auth: verificación de email y recuperación de contraseña', async () => {
+  const email = 'hardening@prueba.test';
+  const registration = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Hardening Prueba',
+      email,
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
+    },
+  });
+  assert.equal(registration.response.status, 201);
+  assert.equal(registration.data.user.emailVerified, false);
+
+  const verificationMail = getMailOutbox()
+    .filter((message) => message.to === email && message.subject.includes('Verifica'))
+    .at(-1);
+  assert.ok(verificationMail);
+  const verificationToken = new URL(
+    verificationMail.text.match(/https?:\/\/\S+/)![0],
+  ).searchParams.get('token');
+  assert.ok(verificationToken);
+  const verified = await api('/auth/verify-email', {
+    method: 'POST',
+    body: { token: verificationToken },
+  });
+  assert.equal(verified.response.status, 200);
+  const me = await api<{ user: AuthUser }>('/auth/me', { cookie: cookieFrom(registration.response) });
+  assert.equal(me.data.user.emailVerified, true);
+
+  const forgot = await api('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+  assert.equal(forgot.response.status, 200);
+  const resetMail = getMailOutbox()
+    .filter((message) => message.to === email && message.subject.includes('contraseña'))
+    .at(-1);
+  assert.ok(resetMail);
+  const resetToken = new URL(resetMail.text.match(/https?:\/\/\S+/)![0]).searchParams.get(
+    'token',
+  );
+  assert.ok(resetToken);
+  const reset = await api('/auth/reset-password', {
+    method: 'POST',
+    body: { token: resetToken, password: 'nuevaClave123' },
+  });
+  assert.equal(reset.response.status, 200);
+
+  const oldLogin = await api('/auth/login', {
+    method: 'POST',
+    body: { email, password: 'secreto123' },
+  });
+  assert.equal(oldLogin.response.status, 401);
+  const newLogin = await api('/auth/login', {
+    method: 'POST',
+    body: { email, password: 'nuevaClave123' },
+  });
+  assert.equal(newLogin.response.status, 200);
 });
 
 test('RGPD: consentimiento, exportación, rectificación y supresión', async () => {

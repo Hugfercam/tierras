@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { isCountryCode } from '../../shared/countries.ts';
 import { clearSessionCookie, currentUser, requireAuth } from '../auth.ts';
+import { sendVerificationEmail } from '../auth-tokens.ts';
 import type { Database } from '../db.ts';
 import { parseWith } from '../errors.ts';
 import {
@@ -60,6 +61,11 @@ export function accountRoutes(db: Database): Router {
     const user = currentUser(res);
     const input = parseWith(updateSchema, req.body);
     const updated = await updateAccount(db, user.id, input);
+    if (!updated.emailVerified) {
+      await sendVerificationEmail(db, updated).catch((error) => {
+        console.error('[account] no se pudo enviar la verificación:', error);
+      });
+    }
     res.json({ user: updated });
   });
 
