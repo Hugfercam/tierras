@@ -3,6 +3,7 @@ dist/
 .npm-cache/
 .env
 .env.local
+.env.staging
 
 # Datos locales y sesiones de prueba
 data/*.db

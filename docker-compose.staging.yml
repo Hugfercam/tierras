@@ -1,0 +1,41 @@
+services:
+  tierras-staging:
+    build:
+      context: .
+      args:
+        VITE_LEGAL_NAME: "${VITE_LEGAL_NAME:-Pendiente de configurar}"
+        VITE_LEGAL_NIF: "${VITE_LEGAL_NIF:-Pendiente de configurar}"
+        VITE_LEGAL_ADDRESS: "${VITE_LEGAL_ADDRESS:-Pendiente de configurar}"
+        VITE_LEGAL_EMAIL: "${VITE_LEGAL_EMAIL:-privacidad@ejemplo.com}"
+        VITE_LEGAL_HOSTING: "${VITE_LEGAL_HOSTING:-Pendiente de configurar}"
+        VITE_LEGAL_COUNTRY: "${VITE_LEGAL_COUNTRY:-España}"
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${STAGING_PORT:-3002}:3001"
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HOST: 0.0.0.0
+      DB_PATH: /app/data/staging.db
+      SEED_DEMO: "false"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+    volumes:
+      - tierras-staging-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  tierras-staging-data:

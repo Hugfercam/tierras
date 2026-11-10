@@ -2,6 +2,7 @@ node_modules
 dist
 .git
 .env
+.env*
 data
 .npm-cache
 .chrome-profile

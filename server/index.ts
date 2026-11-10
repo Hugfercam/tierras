@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 
-if (existsSync('.env')) {
-  process.loadEnvFile('.env');
+const envFile = process.env.ENV_FILE || '.env';
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile);
 }
 
 const { createApp } = await import('./app.ts');

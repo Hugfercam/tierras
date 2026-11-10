@@ -448,7 +448,9 @@ npm start
 | `DB_PATH` | `data/tierras.db` | Archivo SQLite; el directorio se crea solo. |
 | `SEED_DEMO` | `false` | Siembra la demo **solo si la base está vacía**. |
 | `COOKIE_SECURE` | `false` | Poner `true` con HTTPS. |
+| `ENV_FILE` | `.env` | Archivo de entorno del servidor; en staging, `.env.staging`. |
 | `API_URL` | `http://127.0.0.1:3001` | Solo dev: destino del proxy de Vite. |
+| `VITE_LEGAL_*` | Pendiente | Datos del responsable en las páginas legales. |
 
 ### Despliegue con Docker
 
@@ -472,6 +474,19 @@ server {
   }
 }
 ```
+
+### Staging
+
+Staging separado de producción, con base y volumen propios:
+
+```bash
+cp .env.staging.example .env.staging
+npm run build:staging
+npm run staging:local
+npm run smoke:staging
+```
+
+También hay un `docker-compose.staging.yml` con volumen `tierras-staging-data` y healthcheck. Guía completa: [docs/staging.md](docs/staging.md).
 
 Checklist de producción:
 
