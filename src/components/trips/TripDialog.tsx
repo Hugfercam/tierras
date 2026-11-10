@@ -8,7 +8,6 @@ import { useToast } from '../../contexts/ToastContext';
 import { useOnlineStatus } from '../../hooks/useUi';
 import { ApiError, createTrip, updateTrip } from '../../lib/api';
 import { countryToPlace } from '../../lib/places';
-import { todayIso } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { Button } from '../ui/Button';
 import { CountryFlag } from '../ui/CountryFlag';
@@ -82,8 +81,8 @@ export function TripDialog({
   const queryClient = useQueryClient();
   const online = useOnlineStatus();
   const [title, setTitle] = useState('');
-  const [startDate, setStartDate] = useState(todayIso());
-  const [endDate, setEndDate] = useState(todayIso());
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [stops, setStops] = useState<DraftStop[]>([]);
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -115,8 +114,8 @@ export function TripDialog({
     } else {
       const place = initialPlace ?? countryToPlace(initialCountryCode ?? '');
       setTitle('');
-      setStartDate(todayIso());
-      setEndDate(todayIso());
+      setStartDate('');
+      setEndDate('');
       setStops(place ? [stopFromPlace(place)] : []);
       setParticipantIds([]);
     }
@@ -146,8 +145,17 @@ export function TripDialog({
     setStops((current) => current.map((stop) => (stop.key === key ? { ...stop, ...patch } : stop)));
   };
 
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    if (endDate && value && endDate < value) setEndDate(value);
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!startDate || !endDate) {
+      setError('Elige la fecha de inicio y la de fin del viaje.');
+      return;
+    }
     if (stops.length === 0) {
       setError('Añade al menos una parada al viaje.');
       return;
@@ -243,7 +251,7 @@ export function TripDialog({
                 className="input"
                 aria-label="Fecha de inicio"
                 value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
+                onChange={(event) => handleStartDateChange(event.target.value)}
                 required
               />
               <span>→</span>
@@ -257,6 +265,9 @@ export function TripDialog({
                 required
               />
             </div>
+            <span className="field__hint">
+              Puedes registrar un viaje pasado o planificar uno futuro.
+            </span>
           </div>
         </div>
 
