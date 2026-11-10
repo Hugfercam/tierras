@@ -4,11 +4,15 @@ import { currentUser, requireAuth, requireConsent } from '../auth.ts';
 import type { Database } from '../db.ts';
 import { parseWith } from '../errors.ts';
 import {
+  acceptTripInvitation,
   createTrip,
   deleteTrip,
   getPersonalOverview,
+  leaveTrip,
+  listPendingInvitations,
   listTripsForUser,
   loadTripsForUsers,
+  rejectTripInvitation,
   updateTrip,
 } from '../trip-service.ts';
 
@@ -107,6 +111,29 @@ export function meRoutes(db: Database): Router {
   router.get('/overview', (_req, res) => {
     const user = currentUser(res);
     res.json(getPersonalOverview(db, user.id));
+  });
+
+  router.get('/invitations', (_req, res) => {
+    const user = currentUser(res);
+    res.json({ invitations: listPendingInvitations(db, user.id) });
+  });
+
+  router.post('/invitations/:tripId/accept', (req, res) => {
+    const user = currentUser(res);
+    const trip = acceptTripInvitation(db, user.id, req.params.tripId);
+    res.json({ trip });
+  });
+
+  router.post('/invitations/:tripId/reject', (req, res) => {
+    const user = currentUser(res);
+    rejectTripInvitation(db, user.id, req.params.tripId);
+    res.status(204).end();
+  });
+
+  router.delete('/trips/:tripId/participation', (req, res) => {
+    const user = currentUser(res);
+    leaveTrip(db, user.id, req.params.tripId);
+    res.status(204).end();
   });
 
   return router;

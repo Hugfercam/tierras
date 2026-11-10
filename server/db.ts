@@ -82,6 +82,37 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    name: 'trip-participant-consent',
+    up(db) {
+      const columns = new Set(
+        (db.prepare('PRAGMA table_info(trip_participants)').all() as Array<{ name: string }>).map(
+          (column) => column.name,
+        ),
+      );
+      if (!columns.has('status')) {
+        db.exec(
+          "ALTER TABLE trip_participants ADD COLUMN status TEXT NOT NULL DEFAULT 'accepted'",
+        );
+      }
+      if (!columns.has('invited_at')) {
+        db.exec('ALTER TABLE trip_participants ADD COLUMN invited_at TEXT');
+      }
+      if (!columns.has('responded_at')) {
+        db.exec('ALTER TABLE trip_participants ADD COLUMN responded_at TEXT');
+      }
+      if (!columns.has('consent_version')) {
+        db.exec('ALTER TABLE trip_participants ADD COLUMN consent_version TEXT');
+      }
+      db.exec(
+        "UPDATE trip_participants SET invited_at = joined_at WHERE invited_at IS NULL;",
+      );
+      db.exec(
+        "CREATE INDEX IF NOT EXISTS idx_trip_participants_status ON trip_participants(status, user_id);",
+      );
+    },
+  },
 ];
 
 function migrate(db: Database): void {

@@ -96,8 +96,9 @@ function Privacy() {
       <p>
         Tus datos de cuenta son privados. El pasaporte personal es tuyo, pero los miembros de tus
         grupos pueden ver tus estadísticas y los países y ciudades de tus viajes, incluidos los
-        viajes en solitario, porque así funciona la comparación del grupo. Los participantes de un
-        viaje ven el viaje y sus paradas.
+        viajes en solitario, porque así funciona la comparación del grupo. Los participantes reciben
+        una invitación y deben aceptarla para que el viaje cuente en su pasaporte. Una vez aceptan,
+        ven el viaje y sus paradas.
       </p>
       <p>
         El alojamiento y los servicios técnicos pueden tratar datos como encargados del
@@ -156,8 +157,8 @@ function Terms() {
       <h2>Datos compartidos</h2>
       <p>
         Los miembros de tus grupos pueden ver tus estadísticas y los países y ciudades de tus
-        viajes, incluidos los individuales. Los participantes de un viaje pueden ver su contenido.
-        Si no quieres compartir un viaje, no lo añadas a un grupo o no añadas participantes.
+        viajes, incluidos los individuales. Los participantes reciben una invitación y deben aceptarla para que el viaje cuente en su
+        pasaporte. Si no aceptan, no se incorporan a su historial. Pueden rechazar o salir después.
       </p>
       <h2>Disponibilidad y responsabilidad</h2>
       <p>

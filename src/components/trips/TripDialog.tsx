@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getCountry } from '../../../shared/countries.ts';
-import type { PlaceResult, Trip } from '../../../shared/types.ts';
+import type {
+  PlaceResult,
+  Trip,
+  TripParticipantStatus,
+} from '../../../shared/types.ts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGroup } from '../../contexts/GroupContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -89,13 +93,29 @@ export function TripDialog({
   const [saving, setSaving] = useState(false);
 
   const people = useMemo(() => {
-    const byId = new Map<string, { id: string; name: string }>();
+    const byId = new Map<
+      string,
+      { id: string; name: string; status?: TripParticipantStatus }
+    >();
+    const statusById = new Map(
+      (trip?.participants ?? []).map((participant) => [participant.id, participant.status]),
+    );
     for (const member of overview?.members ?? []) {
-      if (member.id !== user?.id) byId.set(member.id, { id: member.id, name: member.name });
+      if (member.id !== user?.id) {
+        byId.set(member.id, {
+          id: member.id,
+          name: member.name,
+          status: statusById.get(member.id),
+        });
+      }
     }
     for (const participant of trip?.participants ?? []) {
-      if (participant.id !== user?.id && !byId.has(participant.id)) {
-        byId.set(participant.id, { id: participant.id, name: participant.name });
+      if (participant.id !== user?.id) {
+        byId.set(participant.id, {
+          id: participant.id,
+          name: participant.name,
+          status: participant.status,
+        });
       }
     }
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
@@ -109,7 +129,12 @@ export function TripDialog({
       setEndDate(trip.endDate);
       setStops(trip.stops.map(stopFromTrip));
       setParticipantIds(
-        trip.participants.filter((participant) => participant.id !== user?.id).map((p) => p.id),
+        trip.participants
+          .filter(
+            (participant) =>
+              participant.id !== user?.id && participant.status !== 'rejected',
+          )
+          .map((participant) => participant.id),
       );
     } else {
       const place = initialPlace ?? countryToPlace(initialCountryCode ?? '');
@@ -351,9 +376,9 @@ export function TripDialog({
 
         {people.length > 0 ? (
           <fieldset className="participant-picker">
-            <legend className="field__label">¿Quién viajó contigo?</legend>
+            <legend className="field__label">¿Con quién compartes este viaje?</legend>
             <p className="field__hint">
-              Los países del viaje contarán para el pasaporte y el ranking de cada persona.
+              Recibirán una invitación y solo contarán para su pasaporte cuando la acepten.
             </p>
             <div className="participant-picker__grid">
               {people.map((person) => {
@@ -374,7 +399,21 @@ export function TripDialog({
                         )
                       }
                     />
-                    <span>{person.name}</span>
+                    <span className="participant-option__name">{person.name}</span>
+                    {person.status ? (
+                      <small
+                        className={cn(
+                          'participant-option__status',
+                          `is-${person.status}`,
+                        )}
+                      >
+                        {person.status === 'accepted'
+                          ? 'Aceptado'
+                          : person.status === 'pending'
+                            ? 'Pendiente'
+                            : 'Rechazó'}
+                      </small>
+                    ) : null}
                   </label>
                 );
               })}
