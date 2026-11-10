@@ -294,12 +294,35 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
   );
 
   const anaPersonal = await api<PersonalOverview>('/me/overview', { cookie: anaCookie });
+  const betoPending = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
+  assert.equal(anaPersonal.data.stats.countries, 2);
+  assert.equal(anaPersonal.data.stats.trips, 1);
+  assert.equal(anaPersonal.data.visits.length, 2);
+  assert.equal(betoPending.data.stats.countries, 0, 'Una invitación pendiente no suma países');
+  assert.equal(betoPending.data.stats.trips, 0);
+  assert.equal(betoPending.data.pendingInvitations.length, 1);
+  assert.equal(
+    betoPending.data.pendingInvitations[0]?.participants.find(
+      (participant) => participant.id === betoId,
+    )?.status,
+    'pending',
+  );
+
+  const accepted = await api<{ trip: Trip }>(
+    '/me/invitations/' + collective.data.trip.id + '/accept',
+    { method: 'POST', cookie: betoCookie },
+  );
+  assert.equal(accepted.response.status, 200);
+  assert.equal(
+    accepted.data.trip.participants.find((participant) => participant.id === betoId)?.status,
+    'accepted',
+  );
+
   const betoPersonal = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
-  for (const personal of [anaPersonal, betoPersonal]) {
-    assert.equal(personal.data.stats.countries, 2);
-    assert.equal(personal.data.stats.trips, 1);
-    assert.equal(personal.data.visits.length, 2);
-  }
+  assert.equal(betoPersonal.data.stats.countries, 2);
+  assert.equal(betoPersonal.data.stats.trips, 1);
+  assert.equal(betoPersonal.data.visits.length, 2);
+  assert.equal(betoPersonal.data.pendingInvitations.length, 0);
 
   const groupOverview = await api<GroupOverview>('/groups/' + group.id, {
     cookie: anaCookie,
@@ -365,8 +388,48 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
   assert.equal(patched.data.trip.participants.length, 2);
 
   const betoAfterPatch = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
-  assert.equal(betoAfterPatch.data.stats.trips, 2);
-  assert.equal(betoAfterPatch.data.stats.countries, 2);
+  assert.equal(betoAfterPatch.data.stats.trips, 1, 'La nueva invitación no cuenta todavía');
+  assert.equal(betoAfterPatch.data.pendingInvitations.length, 1);
+  await api('/me/invitations/' + secondBelgium.data.trip.id + '/accept', {
+    method: 'POST',
+    cookie: betoCookie,
+  });
+  const betoAcceptedPatch = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
+  assert.equal(betoAcceptedPatch.data.stats.trips, 2);
+  assert.equal(betoAcceptedPatch.data.stats.countries, 2);
+
+  const rejectedTrip = await api<{ trip: Trip }>('/trips', {
+    method: 'POST',
+    cookie: anaCookie,
+    body: {
+      title: 'Viaje que Beto rechaza',
+      startDate: '2029-01-10',
+      endDate: '2029-01-12',
+      stops: [{ countryCode: 'PT', cityName: 'Lisboa', lat: 38.7223, lng: -9.1393 }],
+      participantIds: [betoId],
+    },
+  });
+  const forcedAccept = await api('/me/invitations/' + rejectedTrip.data.trip.id + '/accept', {
+    method: 'POST',
+    cookie: anaCookie,
+  });
+  assert.equal(forcedAccept.response.status, 404, 'El propietario no puede aceptar por otra persona');
+  const rejected = await api('/me/invitations/' + rejectedTrip.data.trip.id + '/reject', {
+    method: 'POST',
+    cookie: betoCookie,
+  });
+  assert.equal(rejected.response.status, 204);
+  const afterReject = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
+  assert.equal(afterReject.data.pendingInvitations.length, 0);
+  assert.equal(afterReject.data.stats.trips, 2);
+
+  const left = await api('/me/trips/' + secondBelgium.data.trip.id + '/participation', {
+    method: 'DELETE',
+    cookie: betoCookie,
+  });
+  assert.equal(left.response.status, 204);
+  const afterLeave = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
+  assert.equal(afterLeave.data.stats.trips, 1);
 });
 
 test('RGPD: consentimiento, exportación, rectificación y supresión', async () => {

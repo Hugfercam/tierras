@@ -111,6 +111,18 @@ export function register(input: {
   return request('/auth/register', { method: 'POST', body: input });
 }
 
+export function acceptTripInvitation(tripId: string): Promise<{ trip: Trip }> {
+  return request(`/me/invitations/${tripId}/accept`, { method: 'POST' });
+}
+
+export function rejectTripInvitation(tripId: string): Promise<void> {
+  return request(`/me/invitations/${tripId}/reject`, { method: 'POST' });
+}
+
+export function leaveTrip(tripId: string): Promise<void> {
+  return request(`/me/trips/${tripId}/participation`, { method: 'DELETE' });
+}
+
 export function acceptConsents(): Promise<{ consentRequired: boolean }> {
   return request('/account/consent', { method: 'POST' });
 }

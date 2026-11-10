@@ -13,7 +13,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
 import { useToast } from '../contexts/ToastContext';
 import { useOnlineStatus } from '../hooks/useUi';
-import { ApiError, deleteTrip, getPersonalOverview } from '../lib/api';
+import {
+  acceptTripInvitation,
+  ApiError,
+  deleteTrip,
+  getPersonalOverview,
+  leaveTrip,
+  rejectTripInvitation,
+} from '../lib/api';
 import { formatDate, formatInteger, formatKm, formatPercent, todayIso } from '../lib/format';
 import { TripDialog } from '../components/trips/TripDialog';
 import { Button } from '../components/ui/Button';
@@ -66,7 +73,10 @@ export function DashboardPage() {
   const [tripOpen, setTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<Trip | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [invitationBusy, setInvitationBusy] = useState<string | null>(null);
 
   const personalQuery = useQuery({
     queryKey: ['personal', 'overview'],
@@ -103,6 +113,7 @@ export function DashboardPage() {
   const data = personalQuery.data;
   const ownVisits = data.visits;
   const trips = data.trips;
+  const pendingInvitations = data.pendingInvitations ?? [];
   const latest = ownVisits[0] ?? null;
   const firstName = user?.name.split(' ')[0] ?? '';
   const worldPercent = data.stats.percentWorld;
@@ -171,6 +182,54 @@ export function DashboardPage() {
   const openEditTrip = (trip: Trip) => {
     setEditingTrip(trip);
     setTripOpen(true);
+  };
+
+  const respondToInvitation = async (trip: Trip, accept: boolean) => {
+    setInvitationBusy(trip.id);
+    try {
+      if (accept) {
+        await acceptTripInvitation(trip.id);
+        toast(`Te uniste a “${trip.title}”.`, 'success');
+      } else {
+        await rejectTripInvitation(trip.id);
+        toast(`Rechazaste la invitación a “${trip.title}”.`, 'success');
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['personal', 'overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['groups'] }),
+        queryClient.invalidateQueries({ queryKey: ['group'] }),
+      ]);
+    } catch (caught) {
+      toast(
+        caught instanceof ApiError ? caught.message : 'No pudimos actualizar la invitación.',
+        'error',
+      );
+    } finally {
+      setInvitationBusy(null);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!leaveTarget) return;
+    setLeaving(true);
+    try {
+      await leaveTrip(leaveTarget.id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['personal', 'overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['groups'] }),
+        queryClient.invalidateQueries({ queryKey: ['group'] }),
+        queryClient.invalidateQueries({ queryKey: ['trips'] }),
+      ]);
+      toast(`Saliste de “${leaveTarget.title}”.`, 'success');
+      setLeaveTarget(null);
+    } catch (caught) {
+      toast(
+        caught instanceof ApiError ? caught.message : 'No pudimos quitarte del viaje.',
+        'error',
+      );
+    } finally {
+      setLeaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -249,6 +308,61 @@ export function DashboardPage() {
                 <Icon name="link" size={16} />
                 Unirme
               </Button>
+            </div>
+          </section>
+        ) : null}
+
+        {pendingInvitations.length > 0 ? (
+          <section className="invitation-section" aria-label="Invitaciones pendientes">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">Invitaciones</p>
+                <h2>Viajes que te esperan</h2>
+              </div>
+              <span className="section-head__count">
+                {formatInteger(pendingInvitations.length)}{' '}
+                {pendingInvitations.length === 1 ? 'invitación' : 'invitaciones'}
+              </span>
+            </div>
+            <div className="invitation-list">
+              {pendingInvitations.map((trip) => {
+                const owner = trip.participants.find((participant) => participant.role === 'owner');
+                return (
+                  <article className="invitation-card" key={trip.id}>
+                    <div className="invitation-card__flags">
+                      {trip.countries.slice(0, 4).map((code) => (
+                        <CountryFlag key={code} code={code} size="xs" />
+                      ))}
+                    </div>
+                    <div className="invitation-card__copy">
+                      <h3>{trip.title}</h3>
+                      <p>
+                        {tripDates(trip)} · {owner?.name ?? 'Alguien de tu grupo'} te invita
+                      </p>
+                      <span>{stopLabel(trip)}</span>
+                    </div>
+                    <div className="invitation-card__actions">
+                      <Button
+                        size="sm"
+                        onClick={() => void respondToInvitation(trip, true)}
+                        loading={invitationBusy === trip.id}
+                        disabled={!online || invitationBusy !== null}
+                      >
+                        <Icon name="check" size={15} />
+                        Aceptar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void respondToInvitation(trip, false)}
+                        disabled={!online || invitationBusy !== null}
+                      >
+                        Rechazar
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
         ) : null}
@@ -414,7 +528,19 @@ export function DashboardPage() {
                   <div className="trip-card__meta">
                     <span>
                       <Icon name="users" size={14} />
-                      {trip.participants.map((participant) => participant.name).join(', ')}
+                      {trip.participants
+                        .filter((participant) => participant.status === 'accepted')
+                        .map((participant) => participant.name)
+                        .join(', ')}
+                      {trip.participants.some((participant) => participant.status === 'pending')
+                        ? ` · ${trip.participants.filter((participant) => participant.status === 'pending').length} pendiente${
+                            trip.participants.filter(
+                              (participant) => participant.status === 'pending',
+                            ).length === 1
+                              ? ''
+                              : 's'
+                          }`
+                        : ''}
                     </span>
                     <span>
                       <Icon name="globe" size={14} />
@@ -428,18 +554,35 @@ export function DashboardPage() {
                     </span>
                   </div>
                   <div className="trip-card__actions">
-                    <Button variant="ghost" onClick={() => openEditTrip(trip)} disabled={!online}>
-                      <Icon name="edit" size={15} />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setDeleteTarget(trip)}
-                      disabled={!online}
-                    >
-                      <Icon name="trash" size={15} />
-                      Eliminar
-                    </Button>
+                    {trip.isOwner ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          onClick={() => openEditTrip(trip)}
+                          disabled={!online}
+                        >
+                          <Icon name="edit" size={15} />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setDeleteTarget(trip)}
+                          disabled={!online}
+                        >
+                          <Icon name="trash" size={15} />
+                          Eliminar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        onClick={() => setLeaveTarget(trip)}
+                        disabled={!online}
+                      >
+                        <Icon name="logout" size={15} />
+                        Salir del viaje
+                      </Button>
+                    )}
                   </div>
                 </article>
               ))}
@@ -541,6 +684,18 @@ export function DashboardPage() {
           setEditingTrip(null);
         }}
       />
+
+      {leaveTarget ? (
+        <ConfirmDialog
+          title={`¿Salir de “${leaveTarget.title}”?`}
+          description="Se quitarán sus países y paradas de tu pasaporte. El viaje seguirá existiendo para el resto de participantes."
+          confirmLabel="Salir del viaje"
+          danger
+          loading={leaving}
+          onConfirm={handleLeave}
+          onClose={() => setLeaveTarget(null)}
+        />
+      ) : null}
 
       {deleteTarget ? (
         <ConfirmDialog

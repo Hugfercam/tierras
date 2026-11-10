@@ -82,11 +82,17 @@ export interface TripStop {
   note: string | null;
 }
 
+export type TripParticipantStatus = 'pending' | 'accepted' | 'rejected';
+
 export interface TripParticipant {
   id: string;
   name: string;
   homeCountryCode: string;
   role: 'owner' | 'member';
+  status: TripParticipantStatus;
+  invitedAt?: string;
+  respondedAt?: string;
+  consentVersion?: string;
 }
 
 export interface Trip {
@@ -114,6 +120,7 @@ export interface PersonalOverview {
     cities: number;
   };
   trips: Trip[];
+  pendingInvitations: Trip[];
   visits: Visit[];
 }
 

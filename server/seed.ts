@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { countryName } from '../shared/countries.ts';
+import { PRIVACY_VERSION } from '../shared/legal.ts';
 import { recordCurrentConsents } from './consent.ts';
 import type { Database } from './db.ts';
 
@@ -147,8 +148,9 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
   );
   const insertTripParticipant = db.prepare(
-    `INSERT INTO trip_participants (trip_id, user_id, role, joined_at)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO trip_participants
+       (trip_id, user_id, role, joined_at, status, invited_at, responded_at, consent_version)
+     VALUES (?, ?, ?, ?, 'accepted', ?, ?, ?)`,
   );
 
   const passwordHash = hashPassword(DEMO_PASSWORD);
@@ -203,7 +205,7 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
             createdAt,
           );
           insertTripCountry.run(randomUUID(), tripId, visit.country);
-          insertTripParticipant.run(tripId, userId, 'owner', createdAt);
+          insertTripParticipant.run(tripId, userId, 'owner', createdAt, createdAt, createdAt, PRIVACY_VERSION);
           insertTripStop.run(
             randomUUID(),
             tripId,
@@ -246,7 +248,15 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
       trip.participants.forEach((key, index) => {
         const participantId = userIds.get(key);
         if (!participantId) return;
-        insertTripParticipant.run(tripId, participantId, index === 0 ? 'owner' : 'member', createdAt);
+        insertTripParticipant.run(
+          tripId,
+          participantId,
+          index === 0 ? 'owner' : 'member',
+          createdAt,
+          createdAt,
+          createdAt,
+          PRIVACY_VERSION,
+        );
       });
     }
     db.exec('COMMIT');

@@ -6,11 +6,13 @@ import {
   TOTAL_COUNTRIES,
 } from '../shared/countries.ts';
 import { computeMemberStats, isValidCoordinates } from '../shared/geo.ts';
+import { PRIVACY_VERSION } from '../shared/legal.ts';
 import type {
   MemberStats,
   PersonalOverview,
   Trip,
   TripParticipant,
+  TripParticipantStatus,
   TripStop,
   Visit,
   VisitCity,
@@ -51,6 +53,10 @@ interface ParticipantRow {
   trip_id: string;
   user_id: string;
   role: 'owner' | 'member';
+  status: TripParticipantStatus;
+  invited_at: string | null;
+  responded_at: string | null;
+  consent_version: string | null;
   name: string;
   home_country_code: string;
 }
@@ -265,11 +271,6 @@ function insertTripChildren(
        (id, trip_id, country_code, city_name, lat, lng, position, start_date, end_date, note, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
-  const insertParticipant = db.prepare(
-    `INSERT INTO trip_participants (trip_id, user_id, role, joined_at)
-     VALUES (?, ?, ?, ?)`,
-  );
-
   for (const stop of normalized.stops) {
     if (!seenCountries.has(stop.countryCode)) {
       insertCountry.run(randomUUID(), tripId, stop.countryCode);
@@ -292,21 +293,85 @@ function insertTripChildren(
       createdAt,
     );
   });
+}
 
-  normalized.participantIds.forEach((participantId, index) => {
-    insertParticipant.run(
-      tripId,
-      participantId,
-      index === 0 ? 'owner' : 'member',
-      createdAt,
-    );
-  });
+function insertAcceptedOwner(
+  db: Database,
+  tripId: string,
+  ownerId: string,
+  at: string,
+): void {
+  db.prepare(
+    `INSERT INTO trip_participants
+       (trip_id, user_id, role, joined_at, status, invited_at, responded_at, consent_version)
+     VALUES (?, ?, 'owner', ?, 'accepted', ?, ?, ?)`,
+  ).run(tripId, ownerId, at, at, at, PRIVACY_VERSION);
+}
+
+function insertPendingParticipant(
+  db: Database,
+  tripId: string,
+  userId: string,
+  invitedAt: string,
+): void {
+  db.prepare(
+    `INSERT INTO trip_participants
+       (trip_id, user_id, role, joined_at, status, invited_at)
+     VALUES (?, ?, 'member', ?, 'pending', ?)`,
+  ).run(tripId, userId, invitedAt, invitedAt);
+}
+
+function syncTripParticipants(
+  db: Database,
+  tripId: string,
+  ownerId: string,
+  participantIds: string[],
+  now: string,
+): void {
+  const existing = db
+    .prepare(
+      `SELECT user_id, status, invited_at, responded_at, consent_version
+       FROM trip_participants WHERE trip_id = ?`,
+    )
+    .all(tripId) as unknown as Array<{
+    user_id: string;
+    status: TripParticipantStatus;
+    invited_at: string | null;
+    responded_at: string | null;
+    consent_version: string | null;
+  }>;
+  const previous = new Map(existing.map((row) => [row.user_id, row]));
+
+  db.prepare('DELETE FROM trip_participants WHERE trip_id = ?').run(tripId);
+  insertAcceptedOwner(db, tripId, ownerId, previous.get(ownerId)?.invited_at ?? now);
+
+  for (const participantId of participantIds) {
+    if (participantId === ownerId) continue;
+    const prior = previous.get(participantId);
+    if (prior?.status === 'accepted') {
+      db.prepare(
+        `INSERT INTO trip_participants
+           (trip_id, user_id, role, joined_at, status, invited_at, responded_at, consent_version)
+         VALUES (?, ?, 'member', ?, 'accepted', ?, ?, ?)`,
+      ).run(
+        tripId,
+        participantId,
+        prior.invited_at ?? now,
+        prior.invited_at ?? now,
+        prior.responded_at ?? now,
+        prior.consent_version ?? PRIVACY_VERSION,
+      );
+    } else {
+      insertPendingParticipant(db, tripId, participantId, now);
+    }
+  }
 }
 
 export function loadTripsForUsers(
   db: Database,
   userIds: string[],
   viewerId: string,
+  status: 'accepted' | 'pending' = 'accepted',
 ): LoadedTrip[] {
   const uniqueUserIds = [...new Set(userIds)];
   if (uniqueUserIds.length === 0) return [];
@@ -316,10 +381,10 @@ export function loadTripsForUsers(
       `SELECT DISTINCT t.id, t.owner_id, t.title, t.start_date, t.end_date, t.created_at
        FROM trips t
        JOIN trip_participants tp ON tp.trip_id = t.id
-       WHERE tp.user_id IN (${placeholders})
+       WHERE tp.user_id IN (${placeholders}) AND tp.status = ?
        ORDER BY t.start_date DESC, t.created_at DESC`,
     )
-    .all(...uniqueUserIds) as unknown as TripRow[];
+    .all(...uniqueUserIds, status) as unknown as TripRow[];
   if (tripRows.length === 0) return [];
 
   const tripIds = tripRows.map((trip) => trip.id);
@@ -342,7 +407,8 @@ export function loadTripsForUsers(
     .all(...tripIds) as unknown as TripStopRow[];
   const participantRows = db
     .prepare(
-      `SELECT tp.trip_id, tp.user_id, tp.role, u.name, u.home_country_code
+      `SELECT tp.trip_id, tp.user_id, tp.role, tp.status, tp.invited_at, tp.responded_at,
+              tp.consent_version, u.name, u.home_country_code
        FROM trip_participants tp
        JOIN users u ON u.id = tp.user_id
        WHERE tp.trip_id IN (${tripPlaceholders})
@@ -380,6 +446,10 @@ export function loadTripsForUsers(
         name: participant.name,
         homeCountryCode: participant.home_country_code,
         role: participant.role,
+        status: participant.status,
+        invitedAt: participant.invited_at ?? undefined,
+        respondedAt: participant.responded_at ?? undefined,
+        consentVersion: participant.consent_version ?? undefined,
       }),
     );
     const stops: TripStop[] = (stopsByTrip.get(trip.id) ?? []).map((stop) => ({
@@ -415,6 +485,10 @@ export function listTripsForUser(db: Database, userId: string): Trip[] {
   return loadTripsForUsers(db, [userId], userId);
 }
 
+export function listPendingInvitations(db: Database, userId: string): Trip[] {
+  return loadTripsForUsers(db, [userId], userId, 'pending');
+}
+
 export function createTrip(db: Database, ownerId: string, input: TripInput): Trip {
   const normalized = normalizeTripInput(db, ownerId, input);
   const now = new Date().toISOString();
@@ -427,6 +501,11 @@ export function createTrip(db: Database, ownerId: string, input: TripInput): Tri
        VALUES (?, ?, ?, ?, ?, ?)`,
     ).run(id, ownerId, normalized.title, normalized.startDate, normalized.endDate, now);
     insertTripChildren(db, id, normalized, now);
+    insertAcceptedOwner(db, id, ownerId, now);
+    normalized.participantIds.forEach((participantId) => {
+      if (participantId === ownerId) return;
+      insertPendingParticipant(db, id, participantId, now);
+    });
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
@@ -459,8 +538,9 @@ export function updateTrip(
     ).run(normalized.title, normalized.startDate, normalized.endDate, tripId);
     db.prepare('DELETE FROM trip_stops WHERE trip_id = ?').run(tripId);
     db.prepare('DELETE FROM trip_countries WHERE trip_id = ?').run(tripId);
-    db.prepare('DELETE FROM trip_participants WHERE trip_id = ?').run(tripId);
-    insertTripChildren(db, tripId, normalized, new Date().toISOString());
+    const now = new Date().toISOString();
+    insertTripChildren(db, tripId, normalized, now);
+    syncTripParticipants(db, tripId, ownerId, normalized.participantIds, now);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
@@ -468,6 +548,54 @@ export function updateTrip(
   }
 
   return loadTripsForUsers(db, [ownerId], ownerId).find((item) => item.id === tripId)!;
+}
+
+export function acceptTripInvitation(
+  db: Database,
+  userId: string,
+  tripId: string,
+): Trip {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `UPDATE trip_participants
+       SET status = 'accepted', responded_at = ?, consent_version = ?
+       WHERE trip_id = ? AND user_id = ? AND role = 'member' AND status = 'pending'`,
+    )
+    .run(now, PRIVACY_VERSION, tripId, userId);
+  if (result.changes === 0) {
+    throw new HttpError(404, 'No encontramos esa invitación pendiente.', {
+      code: 'INVITATION_NOT_FOUND',
+    });
+  }
+  return loadTripsForUsers(db, [userId], userId).find((trip) => trip.id === tripId)!;
+}
+
+export function rejectTripInvitation(db: Database, userId: string, tripId: string): void {
+  const result = db
+    .prepare(
+      `UPDATE trip_participants
+       SET status = 'rejected', responded_at = ?
+       WHERE trip_id = ? AND user_id = ? AND role = 'member' AND status = 'pending'`,
+    )
+    .run(new Date().toISOString(), tripId, userId);
+  if (result.changes === 0) {
+    throw new HttpError(404, 'No encontramos esa invitación pendiente.', {
+      code: 'INVITATION_NOT_FOUND',
+    });
+  }
+}
+
+export function leaveTrip(db: Database, userId: string, tripId: string): void {
+  const result = db
+    .prepare(
+      `DELETE FROM trip_participants
+       WHERE trip_id = ? AND user_id = ? AND role = 'member' AND status = 'accepted'`,
+    )
+    .run(tripId, userId);
+  if (result.changes === 0) {
+    throw new HttpError(404, 'No participas en ese viaje.', { code: 'PARTICIPATION_NOT_FOUND' });
+  }
 }
 
 export function deleteTrip(db: Database, ownerId: string, tripId: string): void {
@@ -481,7 +609,9 @@ export function deleteTrip(db: Database, ownerId: string, tripId: string): void 
 
 export function countTripsForUser(db: Database, userId: string): number {
   const row = db
-    .prepare('SELECT COUNT(*) AS count FROM trip_participants WHERE user_id = ?')
+    .prepare(
+      "SELECT COUNT(*) AS count FROM trip_participants WHERE user_id = ? AND status = 'accepted'",
+    )
     .get(userId) as { count: number };
   return row.count;
 }
@@ -587,7 +717,13 @@ export function groupVisitsForMember(
 ): Visit[] {
   const visits: Visit[] = [];
   for (const trip of trips) {
-    if (!trip.participants.some((participant) => participant.id === memberId)) continue;
+    if (
+      !trip.participants.some(
+        (participant) => participant.id === memberId && participant.status === 'accepted',
+      )
+    ) {
+      continue;
+    }
     for (const code of trip.countries) {
       const countryId = trip.countryIds[code];
       visits.push({
@@ -608,6 +744,7 @@ export function getPersonalOverview(db: Database, userId: string): PersonalOverv
   }
 
   const trips = loadTripsForUsers(db, [userId], userId);
+  const pendingInvitations = listPendingInvitations(db, userId);
   const countryBuckets = new Map<
     string,
     {
@@ -726,6 +863,7 @@ export function getPersonalOverview(db: Database, userId: string): PersonalOverv
     user: { id: user.id, name: user.name, homeCountryCode: user.home_country_code },
     stats,
     trips,
+    pendingInvitations,
     visits,
   };
 }

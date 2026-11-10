@@ -22,6 +22,7 @@ Estos valores se configuran en `.env` y se muestran en `/privacidad`, `/terminos
 | Cuenta | Nombre, email, país base, hash scrypt, fechas | Alta y acceso | Contrato | Hasta supresión |
 | Sesión | Token hash, expiración | Mantener sesión | Contrato / seguridad | 30 días |
 | Viajes | Título, fechas, países, paradas, notas, participantes | Diario y estadísticas | Contrato | Hasta borrar viaje o cuenta |
+| Participación | Estado de invitación, fecha y versión aceptada | Consentimiento del participante | Consentimiento | Mientras dure la participación |
 | Grupos | Nombre, miembros, roles, invitaciones | Comparación social | Contrato | Hasta borrar grupo o cuenta |
 | Consentimientos | Tipo, versión, fecha | Demostrar aceptación | Obligación legal / interés legítimo | Mientras exista la cuenta |
 | Seguridad | Logs técnicos mínimos | Prevención de abuso | Interés legítimo | Según retención del hosting |
@@ -53,7 +54,7 @@ Solicitudes por email: responder en el plazo legal (1 mes, prorrogable). Verific
 - Consentimientos: mientras exista la cuenta.
 - Backups: definir plazo (recomendado 30 días) y procedimiento de restauración.
 
-La eliminación de cuenta transfiere los grupos de los que sea propietario a otra persona o los elimina si no queda nadie. Los viajes propios se eliminan; las participaciones se desvinculan.
+La eliminación de cuenta transfiere los grupos de los que sea propietario a otra persona o los elimina si no queda nadie. Los viajes propios se eliminan; las participaciones se desvinculan. Una invitación pendiente no suma al pasaporte hasta que se acepta. La migración 4 marca como aceptados los participantes históricos; una base nueva no hereda esa excepción.
 
 ## 6. Seguridad
 
@@ -94,7 +95,6 @@ No se usa banner de cookies porque solo hay almacenamiento técnico necesario. S
 
 ## 10. Brechas conocidas
 
-- Los participantes de un viaje se añaden por el propietario sin aceptación individual registrada.
 - Los grupos ven estadísticas de viajes individuales; la política lo explica, pero no hay visibilidad por viaje.
 - No hay verificación de email ni rate limiting.
 - El contrato de encargado del tratamiento con el hosting está pendiente de formalizar.
@@ -102,7 +102,7 @@ No se usa banner de cookies porque solo hay almacenamiento técnico necesario. S
 
 ## 11. Checklist antes de producción
 
-- [ ] Resolver el consentimiento de los participantes o retirar esa función.
+- [x] Consentimiento de participantes: invitación, aceptación, rechazo y salida.
 - [ ] Firmar el contrato de encargado con el hosting.
 - [ ] Completar datos del responsable.
 - [ ] Revisar política, términos y cookies con asesoría legal.

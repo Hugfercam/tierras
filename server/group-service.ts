@@ -61,7 +61,7 @@ export function listGroups(db: Database, userId: string): GroupSummary[] {
         (SELECT COUNT(*) FROM memberships mm WHERE mm.group_id = g.id) AS member_count,
         (SELECT COUNT(DISTINCT tc.country_code)
          FROM trip_countries tc
-         JOIN trip_participants tp ON tp.trip_id = tc.trip_id
+         JOIN trip_participants tp ON tp.trip_id = tc.trip_id AND tp.status = 'accepted'
          JOIN memberships mm ON mm.user_id = tp.user_id AND mm.group_id = g.id) AS country_count
        FROM groups g
        JOIN memberships m ON m.group_id = g.id
