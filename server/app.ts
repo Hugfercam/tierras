@@ -4,6 +4,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { TOTAL_COUNTRIES } from '../shared/countries.ts';
 import { openDatabase, type Database } from './db.ts';
 import { HttpError } from './errors.ts';
+import { accountRoutes } from './routes/account.ts';
 import { authRoutes } from './routes/auth.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { meRoutes, tripRoutes } from './routes/trips.ts';
@@ -75,6 +76,7 @@ export function createApp(options: AppOptions): AppBundle {
   });
 
   app.use('/api/auth', authRoutes(db));
+  app.use('/api/account', accountRoutes(db));
   app.use('/api/groups', groupRoutes(db));
   app.use('/api/trips', tripRoutes(db));
   app.use('/api/me', meRoutes(db));

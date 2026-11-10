@@ -14,6 +14,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isError: boolean;
+  consentRequired: boolean;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -47,6 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('tierras:unauthorized', handleUnauthorized);
   }, [queryClient]);
 
+  const refreshUser = useCallback(async () => {
+    await meQuery.refetch();
+  }, [meQuery]);
+
   const logout = useCallback(async () => {
     await logoutRequest();
     queryClient.setQueryData<AuthUser | null>(['auth', 'me'], null);
@@ -61,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: meQuery.data ?? null,
         isLoading: meQuery.isLoading,
         isError: meQuery.isError,
+        consentRequired: meQuery.data?.consentRequired === true,
+        refreshUser,
         logout,
       }}
     >

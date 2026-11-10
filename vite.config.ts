@@ -77,7 +77,9 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: ({ url, request }) =>
-              request.method === 'GET' && url.pathname.startsWith('/api/'),
+              request.method === 'GET' &&
+              url.pathname.startsWith('/api/') &&
+              !url.pathname.startsWith('/api/account'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'tierras-api-v1',

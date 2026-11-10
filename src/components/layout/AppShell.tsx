@@ -26,6 +26,7 @@ const TITLES: Record<string, string> = {
   '/mapa': 'Mapa',
   '/ranking': 'Ranking del grupo',
   '/grupo': 'Mi grupo',
+  '/cuenta': 'Mi cuenta',
 };
 
 export function AppShell() {

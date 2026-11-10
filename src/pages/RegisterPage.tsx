@@ -6,6 +6,7 @@ import {
   REGION_LABELS,
   REGION_ORDER,
 } from '../../shared/countries.ts';
+import { MIN_AGE } from '../../shared/legal.ts';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { Button, Spinner } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icons';
@@ -29,6 +30,9 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [homeCountryCode, setHomeCountryCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -49,7 +53,15 @@ export function RegisterPage() {
     setError(null);
     setFieldErrors({});
     try {
-      const result = await register({ name, email, password, homeCountryCode });
+      const result = await register({
+        name,
+        email,
+        password,
+        homeCountryCode,
+        acceptPrivacy: true,
+        acceptTerms: true,
+        ageConfirmed: true,
+      });
       await clearPrivateApiCache();
       queryClient.setQueryData(['auth', 'me'], result.user);
       navigate(from, { replace: true });
@@ -168,11 +180,53 @@ export function RegisterPage() {
               <span className="field__error">{fieldErrors.homeCountryCode}</span>
             ) : (
               <span className="field__hint">
-                Es el punto de partida para estimar tus kilómetros. En esta versión no se puede
-                cambiar.
+                Es el punto de partida para estimar tus kilómetros. Puedes cambiarlo desde Mi
+                cuenta.
               </span>
             )}
           </label>
+
+          <div className="consent-checks">
+            <label className="consent-check">
+              <input
+                type="checkbox"
+                checked={ageConfirmed}
+                onChange={(event) => setAgeConfirmed(event.target.checked)}
+                required
+              />
+              <span>Confirmo que tengo al menos {MIN_AGE} años.</span>
+            </label>
+            <label className="consent-check">
+              <input
+                type="checkbox"
+                checked={acceptPrivacy}
+                onChange={(event) => setAcceptPrivacy(event.target.checked)}
+                required
+              />
+              <span>
+                He leído y acepto la{' '}
+                <Link to="/privacidad" target="_blank">
+                  política de privacidad
+                </Link>
+                .
+              </span>
+            </label>
+            <label className="consent-check">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(event) => setAcceptTerms(event.target.checked)}
+                required
+              />
+              <span>
+                Acepto los{' '}
+                <Link to="/terminos" target="_blank">
+                  términos de uso
+                </Link>
+                .
+              </span>
+            </label>
+          </div>
 
           {error ? (
             <p className="form-error" role="alert">
@@ -181,7 +235,13 @@ export function RegisterPage() {
             </p>
           ) : null}
 
-          <Button type="submit" size="lg" full loading={submitting}>
+          <Button
+            type="submit"
+            size="lg"
+            full
+            loading={submitting}
+            disabled={!ageConfirmed || !acceptPrivacy || !acceptTerms}
+          >
             Crear mi cuenta
             <Icon name="arrow-right" size={18} />
           </Button>

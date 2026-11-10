@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Brand } from '../../components/layout/Brand';
 import { Icon } from '../../components/ui/Icons';
 
@@ -81,6 +82,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           {children}
           <p className="auth-panel__foot">
             Tierras · Tus viajes, en compañía <span aria-hidden="true">✦</span>
+            <br />
+            <Link to="/privacidad">Privacidad</Link> · <Link to="/terminos">Términos</Link> ·{' '}
+            <Link to="/cookies">Cookies</Link>
           </p>
         </div>
       </section>
