@@ -173,7 +173,7 @@ export function GroupPage() {
             <p className="eyebrow">Quiénes viajan</p>
             <h2>La gente de {activeGroup.name}</h2>
           </div>
-          <Link className="text-link" to="/mapa">
+          <Link className="text-link" to="/mapa?vista=grupo">
             Ver el mapa del grupo <Icon name="arrow-right" size={15} />
           </Link>
         </div>

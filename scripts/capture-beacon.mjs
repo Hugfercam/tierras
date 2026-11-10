@@ -83,7 +83,7 @@ if (!loggedIn) {
     `fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'lucia@tierras.app',password:'viajar2026'})})`,
   );
 }
-await send('Page.navigate', { url: `${BASE_URL}/mapa` });
+await send('Page.navigate', { url: `${BASE_URL}/mapa?vista=grupo` });
 await waitFor(`Boolean(document.querySelector('.map-stage canvas'))`);
 await sleep(1200);
 

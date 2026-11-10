@@ -20,6 +20,7 @@ interface CountryDialogProps {
   onClose: () => void;
   onMark: () => void;
   onRemove: (visit: Visit) => void;
+  personalMode?: boolean;
 }
 
 export function CountryDialog({
@@ -34,6 +35,7 @@ export function CountryDialog({
   onClose,
   onMark,
   onRemove,
+  personalMode = false,
 }: CountryDialogProps) {
   const country = getCountry(countryCode);
   if (!country) return null;
@@ -53,18 +55,34 @@ export function CountryDialog({
       title={country.name}
       eyebrow={regionLabel(country.region)}
       description={
-        travelerCount === 0
-          ? 'Todavía nadie del grupo lo marcó.'
-          : `${travelerCount} ${
-              travelerCount === 1
-                ? 'viajero del grupo ya lo marcó'
-                : 'viajeros del grupo ya lo marcaron'
-            }.`
+        personalMode
+          ? countryVisits.length > 0
+            ? 'Este país forma parte de tu pasaporte personal.'
+            : 'Todavía no está en tu pasaporte personal.'
+          : travelerCount === 0
+            ? 'Todavía nadie del grupo lo marcó.'
+            : `${travelerCount} ${
+                travelerCount === 1
+                  ? 'viajero del grupo ya lo marcó'
+                  : 'viajeros del grupo ya lo marcaron'
+              }.`
       }
       onClose={onClose}
       size="md"
       footer={
-        ownVisit ? (
+        personalMode ? (
+          <>
+            <span className="country-dialog__offline-hint">
+              {online
+                ? 'Puedes añadir otro viaje a este país.'
+                : 'Necesitas conexión para añadir un viaje.'}
+            </span>
+            <Button onClick={onMark} disabled={!online}>
+              <Icon name="plus" size={17} />
+              {countryVisits.length > 0 ? 'Añadir otro viaje' : 'Añadir viaje'}
+            </Button>
+          </>
+        ) : ownVisit ? (
           <>
             <span className="country-dialog__own">
               <Icon name="check" size={15} />{' '}
@@ -107,9 +125,13 @@ export function CountryDialog({
               <strong>{country.capital ?? '—'}</strong>
             </div>
             <div>
-              <span>En {groupName}</span>
+              <span>{personalMode ? 'En tu pasaporte' : `En ${groupName}`}</span>
               <strong>
-                {travelerCount} de {members.length}
+                {personalMode
+                  ? `${countryVisits[0]?.tripCount ?? 0} ${
+                      countryVisits[0]?.tripCount === 1 ? 'viaje' : 'viajes'
+                    }`
+                  : `${travelerCount} de ${members.length}`}
               </strong>
             </div>
           </div>
@@ -130,8 +152,16 @@ export function CountryDialog({
         ) : null}
 
         <div className="country-dialog__section-head">
-          <h3>Quiénes lo visitaron</h3>
-          <span>{countryVisits.length > 0 ? 'Cada viaje, por fecha' : 'Todavía nadie'}</span>
+          <h3>{personalMode ? 'Tu historial en este país' : 'Quiénes lo visitaron'}</h3>
+          <span>
+            {countryVisits.length === 0
+              ? personalMode
+                ? 'Todavía sin viajes'
+                : 'Todavía nadie'
+              : personalMode
+                ? 'Tus paradas y viajes'
+                : 'Cada viaje, por fecha'}
+          </span>
         </div>
 
         {countryVisits.length > 0 ? (
@@ -148,6 +178,11 @@ export function CountryDialog({
                       {visit.userId === currentUserId ? <span className="you-tag">Tú</span> : null}
                     </strong>
                     <span className="visitor-row__date">
+                      {personalMode && visit.tripCount
+                        ? `${visit.tripCount} ${
+                            visit.tripCount === 1 ? 'viaje' : 'viajes'
+                          } · `
+                        : ''}
                       {visit.tripTitle ? `${visit.tripTitle} · ` : ''}
                       {visit.startDate && visit.endDate && visit.startDate !== visit.endDate
                         ? `${formatDate(visit.startDate)} — ${formatDate(visit.endDate)}`
@@ -157,7 +192,7 @@ export function CountryDialog({
                       groupId={groupId}
                       visit={visit}
                       countryCode={countryCode}
-                      editable={visit.canEdit === true}
+                      editable={!personalMode && visit.canEdit === true}
                       online={online}
                     />
                   </div>
@@ -174,8 +209,16 @@ export function CountryDialog({
         ) : (
           <div className="country-dialog__empty">
             <Icon name="globe" size={24} />
-            <p>Este país todavía no está en el mapa de {groupName}.</p>
-            <span>Puedes ser la primera persona en sumarlo.</span>
+            <p>
+              {personalMode
+                ? 'Este país todavía no está en tu pasaporte.'
+                : `Este país todavía no está en el mapa de ${groupName}.`}
+            </p>
+            <span>
+              {personalMode
+                ? 'Añade un viaje para empezar tu historial.'
+                : 'Puedes ser la primera persona en sumarlo.'}
+            </span>
           </div>
         )}
       </div>

@@ -218,7 +218,7 @@ export function DashboardPage() {
             {activeGroup ? (
               <Link className="btn btn--ghost btn--md" to="/mapa">
                 <Icon name="map" size={17} />
-                Ver el mapa
+                Ver mi mapa
               </Link>
             ) : null}
             <Button onClick={openNewTrip} disabled={!online}>

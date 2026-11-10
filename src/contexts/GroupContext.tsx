@@ -119,7 +119,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       setActiveGroupId(group.id);
       await queryClient.invalidateQueries({ queryKey: ['groups'] });
       toast(`Creaste “${group.name}”. Ya puedes invitar a tu gente.`, 'success');
-      navigate('/mapa');
+      navigate('/mapa?vista=grupo');
     },
     [addGroupToCache, navigate, queryClient, setActiveGroupId, toast],
   );
@@ -131,7 +131,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       setActiveGroupId(group.id);
       await queryClient.invalidateQueries({ queryKey: ['groups'] });
       toast(`Ya eres parte de “${group.name}”.`, 'success');
-      navigate('/mapa');
+      navigate('/mapa?vista=grupo');
     },
     [addGroupToCache, navigate, queryClient, setActiveGroupId, toast],
   );

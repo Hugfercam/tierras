@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const TITLES: Record<string, string> = {
   '/pasaporte': 'Mi pasaporte',
-  '/mapa': 'Mapa compartido',
+  '/mapa': 'Mapa',
   '/ranking': 'Ranking del grupo',
   '/grupo': 'Mi grupo',
 };

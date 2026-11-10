@@ -193,6 +193,10 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 
 ### 3.1 Mapa 3D
 
+- Selector **Mi pasaporte / Grupo** en la esquina superior izquierda.
+- **Mi pasaporte** es la vista por defecto: muestra todos los países de tus viajes, sin necesidad de grupo.
+- **Grupo** compara los países de los miembros y se abre con `?vista=grupo` desde el grupo.
+- Si no hay grupo, el selector ofrece crearlo; el mapa personal sigue funcionando.
 - Esfera de Three.js con cámara `PerspectiveCamera` y `OrbitControls` (arrastre, rueda/pellizco, auto-rotación pausable).
 - La textura se genera a 3072×1536 px (2048 en pantallas pequeñas) con:
   - océano y retícula;
@@ -204,6 +208,8 @@ Limitación explícita: no son kilómetros de vuelo ni de ruta por carretera, y 
 - Búsqueda: anima la cámara al punto, deja un marcador pulsante y resalta el país.
 - Atmósfera con shader, estrellas, anillo orbital decorativo y luces suaves.
 - Si WebGL falla, se muestra un estado de error explicativo. No se incluye una segunda proyección porque la vista 3D es la implementación principal de esta versión.
+
+![Mapa personal con selector de grupo](docs/screenshots/map-personal.webp)
 
 ### 3.2 Grupos e invitaciones
 
@@ -322,7 +328,7 @@ Al cerrar sesión, expirar la sesión o iniciar sesión con otra cuenta se vací
 
 El paquete offline pesa ~4,6 MB porque incluye Three.js, el atlas geográfico y 197 banderas SVG; el JS comprimido son ~832 KB.
 
-![Mapa funcionando sin conexión con los datos del grupo](docs/screenshots/offline.webp)
+![Mapa personal funcionando sin conexión con los viajes guardados](docs/screenshots/offline.webp)
 
 ### 3.8 Idioma y copy
 
