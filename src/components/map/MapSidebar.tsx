@@ -49,7 +49,7 @@ export function MapSidebar({
         </p>
         <Button full onClick={onMarkCountry}>
           <Icon name="plus" size={19} />
-          Marcar un país
+          Añadir viaje
         </Button>
       </div>
 
@@ -134,8 +134,8 @@ export function MapSidebar({
             <span>continentes</span>
           </div>
           <div>
-            <strong>{formatInteger(overview.stats.visits)}</strong>
-            <span>marcas totales</span>
+            <strong>{formatInteger(overview.stats.trips ?? overview.stats.visits)}</strong>
+            <span>viajes registrados</span>
           </div>
           <div>
             <strong>{formatKm(overview.stats.kilometers)}</strong>

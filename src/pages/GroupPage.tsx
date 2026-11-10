@@ -212,6 +212,10 @@ export function GroupPage() {
                     <strong>{formatInteger(member.stats.continents)}</strong>
                     <span>continentes</span>
                   </div>
+                  <div>
+                    <strong>{formatInteger(member.stats.trips ?? 0)}</strong>
+                    <span>viajes</span>
+                  </div>
                 </div>
                 <div className="member-card__bar">
                   <span

@@ -41,7 +41,9 @@ export function CountryDialog({
   const countryVisits = visits
     .filter((visit) => visit.countryCode === countryCode)
     .sort((a, b) => b.visitedAt.localeCompare(a.visitedAt));
-  const ownVisit = countryVisits.find((visit) => visit.userId === currentUserId) ?? null;
+  const ownVisits = countryVisits.filter((visit) => visit.userId === currentUserId);
+  const ownVisit = ownVisits.find((visit) => visit.canEdit) ?? ownVisits[0] ?? null;
+  const travelerCount = new Set(countryVisits.map((visit) => visit.userId)).size;
   const memberById = new Map(members.map((member, index) => [member.id, { member, index }]));
   const cityInFocus =
     spotlight?.type === 'city' && spotlight.countryCode === countryCode ? spotlight : null;
@@ -51,10 +53,10 @@ export function CountryDialog({
       title={country.name}
       eyebrow={regionLabel(country.region)}
       description={
-        countryVisits.length === 0
+        travelerCount === 0
           ? 'Todavía nadie del grupo lo marcó.'
-          : `${countryVisits.length} ${
-              countryVisits.length === 1
+          : `${travelerCount} ${
+              travelerCount === 1
                 ? 'viajero del grupo ya lo marcó'
                 : 'viajeros del grupo ya lo marcaron'
             }.`
@@ -65,21 +67,26 @@ export function CountryDialog({
         ownVisit ? (
           <>
             <span className="country-dialog__own">
-              <Icon name="check" size={15} /> Marcado por ti
+              <Icon name="check" size={15} />{' '}
+              {ownVisit.canEdit ? 'Marcado por ti' : 'Participas en este viaje'}
             </span>
-            <Button variant="ghost" onClick={() => onRemove(ownVisit)} disabled={!online}>
-              <Icon name="trash" size={16} />
-              Quitar mi marca
-            </Button>
+            {ownVisit.canEdit ? (
+              <Button variant="ghost" onClick={() => onRemove(ownVisit)} disabled={!online}>
+                <Icon name="trash" size={16} />
+                Quitar este país del viaje
+              </Button>
+            ) : null}
           </>
         ) : (
           <>
             <span className="country-dialog__offline-hint">
-              {online ? 'Se sumará a tu recorrido en este grupo.' : 'Necesitas conexión para marcar.'}
+              {online
+                ? 'Se sumará a tu pasaporte y al del grupo.'
+                : 'Necesitas conexión para añadir un viaje.'}
             </span>
             <Button onClick={onMark} disabled={!online}>
               <Icon name="plus" size={17} />
-              Marcar que estuve
+              Añadir viaje
             </Button>
           </>
         )
@@ -102,7 +109,7 @@ export function CountryDialog({
             <div>
               <span>En {groupName}</span>
               <strong>
-                {countryVisits.length} de {members.length}
+                {travelerCount} de {members.length}
               </strong>
             </div>
           </div>
@@ -124,7 +131,7 @@ export function CountryDialog({
 
         <div className="country-dialog__section-head">
           <h3>Quiénes lo visitaron</h3>
-          <span>{countryVisits.length > 0 ? 'Ordenado por fecha' : 'Todavía nadie'}</span>
+          <span>{countryVisits.length > 0 ? 'Cada viaje, por fecha' : 'Todavía nadie'}</span>
         </div>
 
         {countryVisits.length > 0 ? (
@@ -140,12 +147,17 @@ export function CountryDialog({
                       {entry.member.name}
                       {visit.userId === currentUserId ? <span className="you-tag">Tú</span> : null}
                     </strong>
-                    <span className="visitor-row__date">{formatDate(visit.visitedAt)}</span>
+                    <span className="visitor-row__date">
+                      {visit.tripTitle ? `${visit.tripTitle} · ` : ''}
+                      {visit.startDate && visit.endDate && visit.startDate !== visit.endDate
+                        ? `${formatDate(visit.startDate)} — ${formatDate(visit.endDate)}`
+                        : formatDate(visit.visitedAt)}
+                    </span>
                     <VisitCities
                       groupId={groupId}
                       visit={visit}
                       countryCode={countryCode}
-                      editable={visit.userId === currentUserId}
+                      editable={visit.canEdit === true}
                       online={online}
                     />
                   </div>

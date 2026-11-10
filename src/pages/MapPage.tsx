@@ -15,7 +15,7 @@ import { CountryDialog } from '../components/map/CountryDialog';
 import { GlobeView } from '../components/map/GlobeView';
 import { MapSidebar } from '../components/map/MapSidebar';
 import { PlaceSearch } from '../components/map/PlaceSearch';
-import { VisitDialog } from '../components/map/VisitDialog';
+import { TripDialog } from '../components/trips/TripDialog';
 import { NoGroupState } from '../components/group/NoGroupState';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -200,9 +200,11 @@ export function MapPage() {
       await removeVisit(activeGroupId, pendingRemove.id);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['group', activeGroupId, 'overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['personal', 'overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['trips'] }),
         queryClient.invalidateQueries({ queryKey: ['groups'] }),
       ]);
-      toast(`Quitaste ${countryName(pendingRemove.countryCode)} de tu recorrido.`, 'success');
+      toast(`Quitaste ${countryName(pendingRemove.countryCode)} del viaje.`, 'success');
       setPendingRemove(null);
     } catch (caught) {
       toast(
@@ -329,7 +331,7 @@ export function MapPage() {
         />
       ) : null}
 
-      <VisitDialog
+      <TripDialog
         open={visitOpen}
         initialPlace={visitInitial}
         onClose={() => setVisitOpen(false)}
@@ -341,9 +343,9 @@ export function MapPage() {
 
       {pendingRemove ? (
         <ConfirmDialog
-          title={`¿Quitar ${countryName(pendingRemove.countryCode)} de tu recorrido?`}
-          description={`Se borrará tu marca en ${activeGroup.name}. Los kilómetros y el ranking se recalculan automáticamente.`}
-          confirmLabel="Quitar marca"
+          title={`¿Quitar ${countryName(pendingRemove.countryCode)} de este viaje?`}
+          description={`Se quitará el país y sus paradas del viaje. Los kilómetros y el ranking se recalculan automáticamente.`}
+          confirmLabel="Quitar país"
           danger
           loading={removing}
           onConfirm={handleRemove}

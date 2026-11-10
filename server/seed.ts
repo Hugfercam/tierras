@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { countryName } from '../shared/countries.ts';
 import type { Database } from './db.ts';
 
 type HashPassword = (password: string) => string;
@@ -105,6 +106,22 @@ const visitsByGroup: Record<string, Record<string, DemoVisit[]>> = {
   },
 };
 
+const collectiveTrips = [
+  {
+    title: 'Bélgica en otoño',
+    owner: 'lucia',
+    participants: ['lucia', 'mateo'],
+    start: '2026-11-03',
+    end: '2026-11-07',
+    stops: [
+      { country: 'BE', city: 'Brujas', lat: 51.2089, lng: 3.2242, date: '2026-11-03' },
+      { country: 'BE', city: 'Bruselas', lat: 50.8505, lng: 4.3488, date: '2026-11-05' },
+      { country: 'BE', city: 'Gante', lat: 51.05, lng: 3.7167, date: '2026-11-07' },
+      { country: 'NL', city: 'Ámsterdam', lat: 52.3676, lng: 4.9041, date: '2026-11-07' },
+    ],
+  },
+] as const;
+
 export function seedDemo(db: Database, hashPassword: HashPassword): void {
   const userIds = new Map<string, string>();
   const insertUser = db.prepare(
@@ -116,17 +133,25 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
   const insertMembership = db.prepare(
     'INSERT INTO memberships (group_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)',
   );
-  const insertVisit = db.prepare(
-    `INSERT INTO visits
-      (id, group_id, user_id, country_code, city_name, lat, lng, visited_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  const insertVisitCity = db.prepare(
-    `INSERT INTO visit_cities (id, visit_id, city_name, lat, lng, created_at)
+  const insertTrip = db.prepare(
+    `INSERT INTO trips (id, owner_id, title, start_date, end_date, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  const insertTripCountry = db.prepare(
+    'INSERT INTO trip_countries (id, trip_id, country_code) VALUES (?, ?, ?)',
+  );
+  const insertTripStop = db.prepare(
+    `INSERT INTO trip_stops
+       (id, trip_id, country_code, city_name, lat, lng, position, start_date, end_date, note, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+  );
+  const insertTripParticipant = db.prepare(
+    `INSERT INTO trip_participants (trip_id, user_id, role, joined_at)
+     VALUES (?, ?, ?, ?)`,
   );
 
   const passwordHash = hashPassword(DEMO_PASSWORD);
+  const seenTrips = new Set<string>();
 
   db.exec('BEGIN');
   try {
@@ -161,34 +186,72 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
           `2024-0${Math.min(index + 1, 9)}-15T11:00:00.000Z`,
         );
       }
+    }
 
+    for (const group of groups) {
       for (const [memberKey, visits] of Object.entries(visitsByGroup[group.key] || {})) {
         const userId = userIds.get(memberKey);
         if (!userId) continue;
         for (const visit of visits) {
-          const visitId = randomUUID();
+          const key = `${memberKey}|${visit.country}|${visit.date}`;
+          if (seenTrips.has(key)) continue;
+          seenTrips.add(key);
+          const tripId = randomUUID();
           const createdAt = `${visit.date}T12:00:00.000Z`;
-          insertVisit.run(
-            visitId,
-            groupId,
+          insertTrip.run(
+            tripId,
             userId,
+            `Viaje a ${countryName(visit.country)}`,
+            visit.date,
+            visit.date,
+            createdAt,
+          );
+          insertTripCountry.run(randomUUID(), tripId, visit.country);
+          insertTripParticipant.run(tripId, userId, 'owner', createdAt);
+          insertTripStop.run(
+            randomUUID(),
+            tripId,
             visit.country,
             visit.city,
             visit.lat,
             visit.lng,
+            0,
             visit.date,
-            createdAt,
-          );
-          insertVisitCity.run(
-            randomUUID(),
-            visitId,
-            visit.city,
-            visit.lat,
-            visit.lng,
+            visit.date,
             createdAt,
           );
         }
       }
+    }
+
+    for (const trip of collectiveTrips) {
+      const ownerId = userIds.get(trip.owner);
+      if (!ownerId) continue;
+      const tripId = randomUUID();
+      const createdAt = `${trip.start}T09:00:00.000Z`;
+      insertTrip.run(tripId, ownerId, trip.title, trip.start, trip.end, createdAt);
+      for (const code of new Set(trip.stops.map((stop) => stop.country))) {
+        insertTripCountry.run(randomUUID(), tripId, code);
+      }
+      trip.stops.forEach((stop, index) => {
+        insertTripStop.run(
+          randomUUID(),
+          tripId,
+          stop.country,
+          stop.city,
+          stop.lat,
+          stop.lng,
+          index,
+          stop.date,
+          stop.date,
+          createdAt,
+        );
+      });
+      trip.participants.forEach((key, index) => {
+        const participantId = userIds.get(key);
+        if (!participantId) return;
+        insertTripParticipant.run(tripId, participantId, index === 0 ? 'owner' : 'member', createdAt);
+      });
     }
     db.exec('COMMIT');
   } catch (error) {

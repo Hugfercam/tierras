@@ -3,7 +3,8 @@ import type {
   AuthUser,
   GroupOverview,
   GroupSummary,
-  Visit,
+  PersonalOverview,
+  Trip,
   VisitCity,
 } from '../../shared/types.ts';
 
@@ -130,17 +131,40 @@ export function getGroupOverview(
   return request(`/groups/${groupId}`, { signal });
 }
 
-export function addVisit(
-  groupId: string,
-  input: {
+export function getPersonalOverview(signal?: AbortSignal): Promise<PersonalOverview> {
+  return request('/me/overview', { signal });
+}
+
+export function getTrips(signal?: AbortSignal): Promise<{ trips: Trip[] }> {
+  return request('/trips', { signal });
+}
+
+export interface TripInput {
+  title?: string | null;
+  startDate: string;
+  endDate: string;
+  stops: Array<{
     countryCode: string;
     cityName?: string | null;
     lat?: number;
     lng?: number;
-    visitedAt?: string;
-  },
-): Promise<{ visit: Visit }> {
-  return request(`/groups/${groupId}/visits`, { method: 'POST', body: input });
+    startDate?: string | null;
+    endDate?: string | null;
+    note?: string | null;
+  }>;
+  participantIds?: string[];
+}
+
+export function createTrip(input: TripInput): Promise<{ trip: Trip }> {
+  return request('/trips', { method: 'POST', body: input });
+}
+
+export function updateTrip(tripId: string, input: TripInput): Promise<{ trip: Trip }> {
+  return request(`/trips/${tripId}`, { method: 'PATCH', body: input });
+}
+
+export function deleteTrip(tripId: string): Promise<void> {
+  return request(`/trips/${tripId}`, { method: 'DELETE' });
 }
 
 export function removeVisit(groupId: string, visitId: string): Promise<void> {
