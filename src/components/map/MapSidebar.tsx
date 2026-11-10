@@ -48,8 +48,8 @@ export function MapSidebar({
           {personalMode
             ? 'Estos son todos los países de tus viajes, en solitario o en grupo.'
             : selectedMember
-              ? `Estás viendo el recorrido de ${selectedMember.name}.`
-              : 'Estás viendo todos los países que el grupo ya marcó.'}
+              ? `Estás viendo el recorrido compartido de ${selectedMember.name}.`
+              : 'Estás viendo los países de los viajes que el grupo ha compartido.'}
         </p>
         <Button full onClick={onMarkCountry}>
           <Icon name="plus" size={19} />
@@ -215,8 +215,8 @@ export function MapSidebar({
               <span>4+</span>
             </div>
             <p>
-              Cuanto más cálido el país, más personas del grupo ya lo marcaron. Toca un país para
-              ver quién estuvo.
+              Cuanto más cálido el país, más personas del grupo ya lo marcaron. Solo se cuentan los
+              viajes visibles para el grupo. Toca un país para ver quién estuvo.
             </p>
           </>
         )}

@@ -83,6 +83,7 @@ export interface TripStop {
 }
 
 export type TripParticipantStatus = 'pending' | 'accepted' | 'rejected';
+export type TripVisibility = 'private' | 'group';
 
 export interface TripParticipant {
   id: string;
@@ -101,6 +102,7 @@ export interface Trip {
   title: string;
   startDate: string;
   endDate: string;
+  visibility: TripVisibility;
   createdAt: string;
   countries: string[];
   stops: TripStop[];

@@ -241,7 +241,7 @@ export function GroupPage() {
           <strong>Un grupo cerrado, sin redes ni contactos.</strong>
           <p>
             Solo las personas con el código pueden ver el mapa. Los registros de cada viajero son
-            suyos y se pueden quitar en cualquier momento.
+            suyos; solo se comparan los viajes que cada persona marca como visibles para el grupo.
           </p>
         </div>
       </section>

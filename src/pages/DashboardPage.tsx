@@ -526,6 +526,10 @@ export function DashboardPage() {
                     </p>
                   ) : null}
                   <div className="trip-card__meta">
+                    <span className={`trip-card__visibility is-${trip.visibility}`}>
+                      <Icon name={trip.visibility === 'group' ? 'users' : 'lock'} size={14} />
+                      {trip.visibility === 'group' ? 'Visible en grupos' : 'Solo para mí'}
+                    </span>
                     <span>
                       <Icon name="users" size={14} />
                       {trip.participants

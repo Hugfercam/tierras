@@ -14,6 +14,7 @@ import type {
   TripParticipant,
   TripParticipantStatus,
   TripStop,
+  TripVisibility,
   Visit,
   VisitCity,
 } from '../shared/types.ts';
@@ -26,6 +27,7 @@ interface TripRow {
   title: string;
   start_date: string;
   end_date: string;
+  visibility: TripVisibility;
   created_at: string;
 }
 
@@ -85,6 +87,7 @@ export interface TripInput {
   title?: string | null;
   startDate: string;
   endDate: string;
+  visibility?: TripVisibility;
   stops: TripStopInput[];
   participantIds?: string[];
 }
@@ -103,6 +106,7 @@ interface NormalizedTrip {
   title: string;
   startDate: string;
   endDate: string;
+  visibility: TripVisibility;
   stops: NormalizedStop[];
   participantIds: string[];
 }
@@ -223,6 +227,7 @@ function normalizeTripInput(db: Database, ownerId: string, input: TripInput): No
     title,
     startDate,
     endDate,
+    visibility: input.visibility === 'group' ? 'group' : 'private',
     stops,
     participantIds: [ownerId, ...requestedParticipants],
   };
@@ -372,19 +377,21 @@ export function loadTripsForUsers(
   userIds: string[],
   viewerId: string,
   status: 'accepted' | 'pending' = 'accepted',
+  visibility?: 'group',
 ): LoadedTrip[] {
   const uniqueUserIds = [...new Set(userIds)];
   if (uniqueUserIds.length === 0) return [];
   const placeholders = uniqueUserIds.map(() => '?').join(', ');
+  const visibilityClause = visibility ? ' AND t.visibility = ?' : '';
   const tripRows = db
     .prepare(
-      `SELECT DISTINCT t.id, t.owner_id, t.title, t.start_date, t.end_date, t.created_at
+      `SELECT DISTINCT t.id, t.owner_id, t.title, t.start_date, t.end_date, t.visibility, t.created_at
        FROM trips t
        JOIN trip_participants tp ON tp.trip_id = t.id
-       WHERE tp.user_id IN (${placeholders}) AND tp.status = ?
+       WHERE tp.user_id IN (${placeholders}) AND tp.status = ?${visibilityClause}
        ORDER BY t.start_date DESC, t.created_at DESC`,
     )
-    .all(...uniqueUserIds, status) as unknown as TripRow[];
+    .all(...uniqueUserIds, status, ...(visibility ? [visibility] : [])) as unknown as TripRow[];
   if (tripRows.length === 0) return [];
 
   const tripIds = tripRows.map((trip) => trip.id);
@@ -471,6 +478,7 @@ export function loadTripsForUsers(
       title: trip.title,
       startDate: trip.start_date,
       endDate: trip.end_date,
+      visibility: trip.visibility,
       createdAt: trip.created_at,
       countries: countries.map((country) => country.country_code),
       countryIds,
@@ -497,9 +505,17 @@ export function createTrip(db: Database, ownerId: string, input: TripInput): Tri
   db.exec('BEGIN');
   try {
     db.prepare(
-      `INSERT INTO trips (id, owner_id, title, start_date, end_date, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, ownerId, normalized.title, normalized.startDate, normalized.endDate, now);
+      `INSERT INTO trips (id, owner_id, title, start_date, end_date, visibility, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      ownerId,
+      normalized.title,
+      normalized.startDate,
+      normalized.endDate,
+      normalized.visibility,
+      now,
+    );
     insertTripChildren(db, id, normalized, now);
     insertAcceptedOwner(db, id, ownerId, now);
     normalized.participantIds.forEach((participantId) => {
@@ -522,20 +538,23 @@ export function updateTrip(
   input: TripInput,
 ): Trip {
   const trip = db
-    .prepare('SELECT id FROM trips WHERE id = ? AND owner_id = ?')
-    .get(tripId, ownerId) as { id: string } | undefined;
+    .prepare('SELECT id, visibility FROM trips WHERE id = ? AND owner_id = ?')
+    .get(tripId, ownerId) as { id: string; visibility: TripVisibility } | undefined;
   if (!trip) {
     throw new HttpError(404, 'No encontramos ese viaje o no puedes editarlo.', {
       code: 'TRIP_NOT_FOUND',
     });
   }
-  const normalized = normalizeTripInput(db, ownerId, input);
+  const normalized = normalizeTripInput(db, ownerId, {
+    ...input,
+    visibility: input.visibility ?? trip.visibility,
+  });
 
   db.exec('BEGIN');
   try {
     db.prepare(
-      `UPDATE trips SET title = ?, start_date = ?, end_date = ? WHERE id = ?`,
-    ).run(normalized.title, normalized.startDate, normalized.endDate, tripId);
+      `UPDATE trips SET title = ?, start_date = ?, end_date = ?, visibility = ? WHERE id = ?`,
+    ).run(normalized.title, normalized.startDate, normalized.endDate, normalized.visibility, tripId);
     db.prepare('DELETE FROM trip_stops WHERE trip_id = ?').run(tripId);
     db.prepare('DELETE FROM trip_countries WHERE trip_id = ?').run(tripId);
     const now = new Date().toISOString();

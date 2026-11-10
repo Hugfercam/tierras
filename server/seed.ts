@@ -136,8 +136,8 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
     'INSERT INTO memberships (group_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)',
   );
   const insertTrip = db.prepare(
-    `INSERT INTO trips (id, owner_id, title, start_date, end_date, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO trips (id, owner_id, title, start_date, end_date, visibility, created_at)
+     VALUES (?, ?, ?, ?, ?, 'group', ?)`,
   );
   const insertTripCountry = db.prepare(
     'INSERT INTO trip_countries (id, trip_id, country_code) VALUES (?, ?, ?)',

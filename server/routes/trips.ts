@@ -50,6 +50,7 @@ const tripSchema = z
     title: z.string().trim().max(100, 'Máximo 100 caracteres.').optional().nullable(),
     startDate: isoDate,
     endDate: isoDate,
+    visibility: z.enum(['private', 'group']).optional(),
     stops: z.array(stopSchema).min(1, 'Añade al menos una parada.').max(50, 'Máximo 50 paradas.'),
     participantIds: z.array(z.string().min(1)).max(50).optional(),
   })

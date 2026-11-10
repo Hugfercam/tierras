@@ -275,6 +275,7 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
     cookie: anaCookie,
     body: {
       title: 'Bélgica y Países Bajos',
+      visibility: 'group',
       startDate: '2026-11-03',
       endDate: '2026-11-07',
       stops: [
@@ -340,6 +341,7 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
     cookie: anaCookie,
     body: {
       title: 'Bélgica en 2028',
+      visibility: 'group',
       startDate: '2028-03-01',
       endDate: '2028-03-03',
       stops: [{ countryCode: 'BE', cityName: 'Gante', lat: 51.05, lng: 3.7167 }],
@@ -430,6 +432,62 @@ test('viajes multipaís, participantes y varios viajes al mismo país', async ()
   assert.equal(left.response.status, 204);
   const afterLeave = await api<PersonalOverview>('/me/overview', { cookie: betoCookie });
   assert.equal(afterLeave.data.stats.trips, 1);
+});
+
+test('visibilidad: un viaje privado no entra en el grupo hasta compartirlo', async () => {
+  const owner = await api<{ user: AuthUser }>('/auth/register', {
+    method: 'POST',
+    body: {
+      name: 'Visibilidad Dueña',
+      email: 'visibilidad@prueba.test',
+      password: 'secreto123',
+      homeCountryCode: 'ES',
+      acceptPrivacy: true,
+      acceptTerms: true,
+      ageConfirmed: true,
+    },
+  });
+  const cookie = cookieFrom(owner.response);
+  const groupResponse = await api<{ group: GroupSummary }>('/groups', {
+    method: 'POST',
+    cookie,
+    body: { name: 'Grupo visibilidad' },
+  });
+  const trip = await api<{ trip: Trip }>('/trips', {
+    method: 'POST',
+    cookie,
+    body: {
+      title: 'Viaje privado',
+      startDate: '2025-04-01',
+      endDate: '2025-04-03',
+      stops: [{ countryCode: 'IT', cityName: 'Roma', lat: 41.9028, lng: 12.4964 }],
+    },
+  });
+  assert.equal(trip.data.trip.visibility, 'private');
+  const personal = await api<PersonalOverview>('/me/overview', { cookie });
+  assert.equal(personal.data.stats.countries, 1);
+
+  const privateGroup = await api<GroupOverview>('/groups/' + groupResponse.data.group.id, {
+    cookie,
+  });
+  assert.equal(privateGroup.data.stats.countries, 0, 'Un viaje privado no se comparte con el grupo');
+
+  const shared = await api<{ trip: Trip }>('/trips/' + trip.data.trip.id, {
+    method: 'PATCH',
+    cookie,
+    body: {
+      title: 'Viaje compartido',
+      visibility: 'group',
+      startDate: '2025-04-01',
+      endDate: '2025-04-03',
+      stops: [{ countryCode: 'IT', cityName: 'Roma', lat: 41.9028, lng: 12.4964 }],
+    },
+  });
+  assert.equal(shared.data.trip.visibility, 'group');
+  const sharedGroup = await api<GroupOverview>('/groups/' + groupResponse.data.group.id, {
+    cookie,
+  });
+  assert.equal(sharedGroup.data.stats.countries, 1);
 });
 
 test('RGPD: consentimiento, exportación, rectificación y supresión', async () => {
