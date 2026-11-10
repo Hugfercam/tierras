@@ -175,6 +175,10 @@ export function LoginPage() {
           </div>
         ) : null}
 
+        <p className="auth-inline-link">
+          <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
+        </p>
+
         <p className="auth-switch">
           ¿Todavía no tienes cuenta?{' '}
           <Link to="/registro" state={{ from }}>

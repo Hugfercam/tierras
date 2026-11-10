@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   homeCountryCode: string;
   createdAt: string;
+  emailVerified?: boolean;
   consentRequired?: boolean;
 }
 

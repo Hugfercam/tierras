@@ -330,7 +330,7 @@ test('la migración convierte visits.city_name en la primera ciudad', async () =
     assert.equal(rows.length, 1);
     assert.equal(rows[0].city_name, 'Bruselas');
     assert.equal(rows[0].lat, 50.85);
-    assert.equal(schemaVersion(migrated), 5);
+    assert.equal(schemaVersion(migrated), 6);
     migrated.close();
 
     const reopened = openDatabase({ file, seedDemo: false });
@@ -338,7 +338,7 @@ test('la migración convierte visits.city_name en la primera ciudad', async () =
       .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
       .get('legacy-visit') as { count: number };
     assert.equal(count.count, 1, 'La migración debe ser idempotente');
-    assert.equal(schemaVersion(reopened), 5);
+    assert.equal(schemaVersion(reopened), 6);
     reopened.close();
   } finally {
     await removeDatabase(file);
@@ -372,7 +372,7 @@ test('una migración ya aplicada no restaura ciudades borradas al reabrir', asyn
         .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
         .get('legacy-visit') as { count: number };
       assert.equal(count.count, 0, 'Las ciudades borradas no deben resucitar');
-      assert.equal(schemaVersion(reopened), 5);
+      assert.equal(schemaVersion(reopened), 6);
     } finally {
       reopened.close();
     }
@@ -392,7 +392,7 @@ test('una base existente con visit_cities vacía no se backfillea al actualizar'
         .prepare('SELECT COUNT(*) AS count FROM trip_stops WHERE trip_id = ?')
         .get('legacy-visit') as { count: number };
       assert.equal(count.count, 0, 'La actualización no debe recuperar ciudades borradas');
-      assert.equal(schemaVersion(upgraded), 5);
+      assert.equal(schemaVersion(upgraded), 6);
     } finally {
       upgraded.close();
     }

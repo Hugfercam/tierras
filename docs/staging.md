@@ -71,6 +71,33 @@ En staging real:
 
 Sin HTTPS, deja `COOKIE_SECURE=false` solo en local. Nunca en producción.
 
+## 4.1 Email
+
+Configura en `.env.staging`:
+
+- `APP_URL` con la URL pública de staging.
+- `EMAIL_WEBHOOK_URL` con el endpoint del proveedor (Resend, Postmark o similar).
+- `EMAIL_WEBHOOK_TOKEN` si el proveedor usa Bearer.
+- `EMAIL_CONSOLE=false` para no imprimir enlaces con tokens en logs.
+
+Sin `EMAIL_WEBHOOK_URL`, la app imprime el email en consola solo en desarrollo. En producción no se envía nada.
+
+Prueba:
+
+1. Registrar una cuenta.
+2. Abrir el enlace de verificación.
+3. Pedir recuperación de contraseña.
+4. Confirmar que el enlace caduca y que las sesiones se revocan al cambiar la contraseña.
+
+## 4.2 Backups
+
+```powershell
+npm run backup
+```
+
+Crea `backups/tierras-<fecha>.db` con `VACUUM INTO` y verifica `PRAGMA integrity_check`. Programa el comando a diario y copia el resultado fuera del servidor. Prueba una restauración en staging antes de producción.
+
+
 ## 5. Smoke test
 
 `npm run smoke:staging` comprueba:
@@ -92,15 +119,16 @@ Sin HTTPS, deja `COOKIE_SECURE=false` solo en local. Nunca en producción.
 - [ ] Exportación JSON y eliminación de cuenta.
 - [ ] Transferencia de grupo al eliminar la cuenta propietaria.
 - [ ] PWA instalable y offline.
-- [ ] Backup de staging probado.
+- [ ] Backup de staging probado y restauración ensayada.
+- [ ] Email de verificación y recuperación probados.
+- [ ] Rate limiting probado con varios intentos.
 - [ ] Logs sin datos personales.
 
 ## 7. Límites
 
 Staging no certifica RGPD por sí solo. Antes de producción siguen pendientes:
 
-- consentimiento de participantes;
-- decisión sobre visibilidad por viaje;
 - contrato de encargado con el hosting;
-- rate limiting, verificación de email y recuperación de contraseña;
-- revisión legal de los textos.
+- proveedor de email y plantillas definitivas;
+- política de backups y restauración;
+- revisión legal de los textos y datos del responsable.

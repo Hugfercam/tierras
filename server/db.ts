@@ -129,6 +129,35 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 6,
+    name: 'email-verification-and-reset-tokens',
+    up(db) {
+      const userColumns = new Set(
+        (db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>).map(
+          (column) => column.name,
+        ),
+      );
+      if (!userColumns.has('email_verified_at')) {
+        db.exec('ALTER TABLE users ADD COLUMN email_verified_at TEXT');
+        // Las cuentas existentes ya estaban en uso; no las bloqueamos retroactivamente.
+        db.exec('UPDATE users SET email_verified_at = created_at');
+      }
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS auth_tokens (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          type TEXT NOT NULL CHECK (type IN ('verify_email', 'reset_password')),
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at TEXT NOT NULL,
+          used_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_auth_tokens_expires ON auth_tokens(expires_at);
+      `);
+    },
+  },
 ];
 
 function migrate(db: Database): void {

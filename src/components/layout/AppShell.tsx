@@ -4,6 +4,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useOnlineStatus } from '../../hooks/useUi';
 import { cn } from '../../lib/cn';
 import { Brand } from './Brand';
+import { EmailVerificationBanner } from './EmailVerificationBanner';
 import { GroupSwitcher } from './GroupSwitcher';
 import { UserMenu } from './UserMenu';
 import { Icon, type IconName } from '../ui/Icons';
@@ -71,6 +72,8 @@ export function AppShell() {
           <UserMenu />
         </div>
       </header>
+
+      <EmailVerificationBanner />
 
       <main id="contenido" className="app-main">
         <Outlet />

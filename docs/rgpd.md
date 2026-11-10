@@ -64,15 +64,19 @@ La eliminación de cuenta transfiere los grupos de los que sea propietario a otr
 - validación de `Origin` en mutaciones;
 - SQLite con WAL y acceso al archivo restringido;
 - exportación excluida de la caché de la PWA;
+- rate limiting en login, registro, recuperación y verificación;
+- email verificado y recuperación de contraseña con tokens de un solo uso;
+- revocación de sesiones al cambiar la contraseña;
+- backups verificados con `VACUUM INTO`;
 - sin secretos en el repositorio.
 
 Pendiente antes de producción:
 
 - HTTPS obligatorio y `COOKIE_SECURE=true`;
-- backups cifrados y pruebas de restauración;
-- rate limiting en login/registro;
+- backups cifrados, fuera del servidor y pruebas de restauración;
 - revisión de logs para que no contengan datos personales;
-- política de gestión de incidentes y contacto de seguridad.
+- política de gestión de incidentes y contacto de seguridad;
+- proveedor de email y contrato de encargado.
 
 ## 7. Brechas de seguridad
 
@@ -96,8 +100,7 @@ No se usa banner de cookies porque solo hay almacenamiento técnico necesario. S
 
 ## 10. Brechas conocidas
 
-- No hay verificación de email ni rate limiting.
-- El contrato de encargado del tratamiento con el hosting está pendiente de formalizar.
+- El contrato de encargado del tratamiento con el hosting y el proveedor de email está pendiente de formalizar.
 - Las notas libres podrían contener datos sensibles introducidos por el usuario.
 
 ## 11. Checklist antes de producción
@@ -108,9 +111,10 @@ No se usa banner de cookies porque solo hay almacenamiento técnico necesario. S
 - [ ] Completar datos del responsable.
 - [ ] Revisar política, términos y cookies con asesoría legal.
 - [ ] Configurar HTTPS y cookies seguras.
-- [ ] Definir hosting, backups y retención.
-- [ ] Añadir rate limiting y alertas de seguridad.
+- [ ] Definir hosting, backups fuera del servidor y retención.
+- [x] Rate limiting en login, registro y recuperación.
+- [x] Verificación de email y recuperación de contraseña.
 - [ ] Probar exportación y supresión con una cuenta real.
-- [ ] Revisar que los grupos solo muestren los datos previstos.
+- [x] Revisar que los grupos solo muestren los datos previstos.
 - [ ] Documentar el procedimiento de brechas.
 - [ ] Designar contacto de privacidad y, si procede, DPO.

@@ -127,7 +127,7 @@ const collectiveTrips = [
 export function seedDemo(db: Database, hashPassword: HashPassword): void {
   const userIds = new Map<string, string>();
   const insertUser = db.prepare(
-    'INSERT INTO users (id, name, email, password_hash, home_country_code, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO users (id, name, email, password_hash, home_country_code, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
   const insertGroup = db.prepare(
     'INSERT INTO groups (id, name, owner_id, invite_code, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -162,7 +162,7 @@ export function seedDemo(db: Database, hashPassword: HashPassword): void {
       const id = randomUUID();
       userIds.set(user.key, id);
       const createdAt = `2025-01-0${index + 1}T09:00:00.000Z`;
-      insertUser.run(id, user.name, user.email, passwordHash, 'ES', createdAt);
+      insertUser.run(id, user.name, user.email, passwordHash, 'ES', createdAt, createdAt);
       recordCurrentConsents(db, id, createdAt);
     }
 

@@ -10,13 +10,14 @@ interface AccountRow {
   email: string;
   password_hash: string;
   home_country_code: string;
+  email_verified_at: string | null;
   created_at: string;
 }
 
 function getAccount(db: Database, userId: string): AccountRow {
   const row = db
     .prepare(
-      `SELECT id, name, email, password_hash, home_country_code, created_at
+      `SELECT id, name, email, password_hash, home_country_code, email_verified_at, created_at
        FROM users WHERE id = ?`,
     )
     .get(userId) as AccountRow | undefined;
@@ -46,6 +47,7 @@ export async function updateAccount(
   const email = input.email?.trim().toLowerCase() || row.email;
   const name = input.name?.trim() || row.name;
   const homeCountryCode = input.homeCountryCode?.trim().toUpperCase() || row.home_country_code;
+  const emailChanged = email !== row.email;
   if (email !== row.email) {
     const exists = db.prepare('SELECT id FROM users WHERE email = ? AND id <> ?').get(email, userId);
     if (exists) {
@@ -56,12 +58,12 @@ export async function updateAccount(
     }
   }
 
-  db.prepare('UPDATE users SET name = ?, email = ?, home_country_code = ? WHERE id = ?').run(
-    name,
-    email,
-    homeCountryCode,
-    userId,
-  );
+  db.prepare(
+    `UPDATE users
+     SET name = ?, email = ?, home_country_code = ?,
+         email_verified_at = CASE WHEN ? THEN NULL ELSE email_verified_at END
+     WHERE id = ?`,
+  ).run(name, email, homeCountryCode, emailChanged ? 1 : 0, userId);
   const updated = getAccount(db, userId);
   return toAuthUser(updated, isConsentRequired(db, userId));
 }
@@ -134,6 +136,7 @@ export function exportAccount(db: Database, userId: string) {
       name: user.name,
       email: user.email,
       homeCountryCode: user.home_country_code,
+      emailVerified: Boolean(user.email_verified_at),
       createdAt: user.created_at,
     },
     groups,

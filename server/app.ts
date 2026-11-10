@@ -31,6 +31,7 @@ export function createApp(options: AppOptions): AppBundle {
   });
   const app = express();
   app.disable('x-powered-by');
+  if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
   app.use(express.json({ limit: '100kb' }));
 
   app.use((_req, res, next) => {

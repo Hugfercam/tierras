@@ -15,6 +15,9 @@ import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MapPage } from './pages/MapPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { ConsentPage } from './pages/ConsentPage';
 import { AccountPage } from './pages/AccountPage';
 import { LegalPage } from './pages/LegalPage';
@@ -82,6 +85,9 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/registro" element={<RegisterPage />} />
+                <Route path="/recuperar" element={<ForgotPasswordPage />} />
+                <Route path="/restablecer" element={<ResetPasswordPage />} />
+                <Route path="/verificar-email" element={<VerifyEmailPage />} />
                 <Route path="/privacidad" element={<LegalPage kind="privacy" />} />
                 <Route path="/terminos" element={<LegalPage kind="terms" />} />
                 <Route path="/cookies" element={<LegalPage kind="cookies" />} />
